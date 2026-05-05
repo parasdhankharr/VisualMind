@@ -17,7 +17,22 @@ export async function POST(request) {
   try {
     const payload = await request.json();
     await connectDB();
-    const course = await Course.create(payload);
+    const course = await Course.findOneAndUpdate(
+      { id: payload.id },
+      payload,
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    const excessCourses = await Course.find({})
+      .sort({ createdAt: -1, updatedAt: -1 })
+      .skip(3)
+      .select("_id");
+
+    if (excessCourses.length) {
+      await Course.deleteMany({
+        _id: { $in: excessCourses.map((item) => item._id) }
+      });
+    }
+
     return NextResponse.json({ course }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });

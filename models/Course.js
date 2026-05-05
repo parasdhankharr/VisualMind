@@ -17,6 +17,16 @@ const LessonSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const QuestionSchema = new mongoose.Schema(
+  {
+    id: String,
+    question: String,
+    options: [String],
+    correctIndex: Number
+  },
+  { _id: false }
+);
+
 const CourseSchema = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true },
@@ -25,10 +35,12 @@ const CourseSchema = new mongoose.Schema(
     level: String,
     duration: String,
     xp: Number,
+    progress: Number,
     color: String,
     summary: String,
     description: String,
     concepts: [String],
+    questions: [QuestionSchema],
     createdAt: Number,
     lessons: [LessonSchema]
   },

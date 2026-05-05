@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { demoCourses, leaderboard } from "@/data/courses";
+import { AnimatePresence, motion } from "framer-motion";
+import { leaderboard } from "@/data/courses";
 import { getRelativeTimeLabel } from "@/lib/learning";
 import { useLearningStore } from "@/store/use-learning-store";
 
@@ -23,6 +23,65 @@ const achievementBadges = [
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value || 0)));
+}
+
+function clampValue(value, min = 0, max = 1) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function formatTrend(change) {
+  if (change > 3) return { arrow: "↑", label: "improving", tone: "text-emerald-200" };
+  if (change < -3) return { arrow: "↓", label: "dropping", tone: "text-rose-200" };
+  return { arrow: "→", label: "steady", tone: "text-slate-300" };
+}
+
+function computeEngagementScore(sessions) {
+  if (!sessions.length) return null;
+
+  const totalActiveMs = sessions.reduce((sum, session) => sum + (session.activeMs || 0), 0);
+  const totalMs = sessions.reduce((sum, session) => sum + (session.totalMs || 0), 0);
+  const interactions = sessions.reduce((sum, session) => sum + (session.interactionCount || 0), 0);
+
+  if (!totalMs || !totalActiveMs) return null;
+
+  const activeRatio = totalActiveMs / totalMs;
+  const activeMinutes = totalActiveMs / 60000;
+  const interactionRate = interactions / Math.max(activeMinutes, 1);
+  const interactionFactor = clampValue(interactionRate / 6, 0.45, 1.15);
+  const score = clampPercent(activeRatio * interactionFactor * 100);
+
+  return {
+    value: score,
+    detail: "Based on active lesson time, interactions, and idle periods.",
+    activeRatio,
+    interactionRate
+  };
+}
+
+function computeRecallStrength(quizAttempts, courseProgress) {
+  if (!quizAttempts.length) return null;
+
+  const correctAnswers = quizAttempts.filter((attempt) => attempt.correct).length;
+  const totalQuestions = quizAttempts.length;
+  const groupedAttempts = quizAttempts.reduce((accumulator, attempt) => {
+    accumulator[attempt.lessonId] = (accumulator[attempt.lessonId] || 0) + 1;
+    return accumulator;
+  }, {});
+  const retries = Object.values(groupedAttempts).reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  const viewedLessons = Object.values(courseProgress).reduce((sum, item) => sum + Object.keys(item.viewedLessons || {}).length, 0);
+  const completedLessons = Object.values(courseProgress).reduce((sum, item) => sum + Object.keys(item.completedLessons || {}).length, 0);
+  const accuracy = correctAnswers / Math.max(totalQuestions, 1);
+  const retryRate = retries / Math.max(totalQuestions, 1);
+  const completionConsistency = viewedLessons ? completedLessons / viewedLessons : 0;
+  const consistencyFactor = clampValue((completionConsistency + (1 - retryRate)) / 2, 0, 1);
+  const score = clampPercent(accuracy * consistencyFactor * 100);
+
+  return {
+    value: score,
+    detail: "Based on quiz accuracy, retries, and lesson completion consistency.",
+    accuracy,
+    retries
+  };
 }
 
 function GlassPanel({ children, className = "" }) {
@@ -62,8 +121,10 @@ function CountUpNumber({ value, suffix = "", prefix = "" }) {
 function CourseCard({ course, progress, earnedXp, delay = 0 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
+      layout
+      initial={{ opacity: 0, y: 18, scale: 0.94 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -18, scale: 0.92 }}
       transition={{ duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -4, scale: 1.01 }}
       className="rounded-[2rem] border border-white/10 bg-[#1b2029]/96 p-5 shadow-[0_18px_45px_rgba(0,0,0,0.18)]"
@@ -118,7 +179,7 @@ function AchievementCard({ badge, delay = 0 }) {
   );
 }
 
-function MetricCard({ label, value, suffix = "", detail, gradient }) {
+function MetricCard({ label, value, suffix = "", detail, gradient, trend }) {
   return (
     <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5">
       <div className={`h-1.5 w-16 rounded-full bg-gradient-to-r ${gradient}`} />
@@ -126,13 +187,25 @@ function MetricCard({ label, value, suffix = "", detail, gradient }) {
       <p className="mt-2 text-3xl font-black text-white">
         <CountUpNumber value={value} suffix={suffix} />
       </p>
+      {trend ? <p className={`mt-2 text-xs font-bold uppercase tracking-[0.16em] ${trend.tone}`}>{trend.arrow} {trend.label}</p> : null}
       <p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>
     </div>
   );
 }
 
-function AnalyticsChart({ data }) {
-  const maxValue = Math.max(...data.map((item) => item.minutes), 1);
+function AnalyticsChart({ data, engagementMetric, recallMetric }) {
+  if (!data.length && !engagementMetric && !recallMetric) {
+    return (
+      <div className="mt-6 rounded-[1.7rem] border border-dashed border-white/10 bg-white/[0.04] p-6">
+        <p className="text-lg font-black text-white">Start learning to see your stats</p>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+          Engagement Score and Recall Strength appear after you spend time in lessons and submit quizzes.
+        </p>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...(data.length ? data.map((item) => item.minutes) : [1]), 1);
 
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -141,41 +214,61 @@ function AnalyticsChart({ data }) {
           <p className="text-sm font-bold uppercase tracking-[0.12em] text-slate-300">Weekly learning time</p>
           <p className="text-xs text-slate-500">7 day trend</p>
         </div>
-        <div className="mt-5 flex h-44 items-end gap-3">
-          {data.map((item, index) => (
-            <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
-              <div className="flex h-full w-full items-end">
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${(item.minutes / maxValue) * 100}%` }}
-                  transition={{ duration: 0.7, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                  className="w-full rounded-t-[1rem] bg-gradient-to-t from-cyan-400 via-blue-500 to-violet-500"
-                />
+        {data.length ? (
+          <div className="mt-5 flex h-44 items-end gap-3">
+            {data.map((item, index) => (
+              <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
+                <div className="flex h-full w-full items-end">
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: `${(item.minutes / maxValue) * 100}%` }}
+                    transition={{ duration: 0.7, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                    className="w-full rounded-t-[1rem] bg-gradient-to-t from-cyan-400 via-blue-500 to-violet-500"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-white">{item.minutes}m</p>
+                  <p className="text-xs text-slate-400">{item.label}</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-white">{item.minutes}m</p>
-                <p className="text-xs text-slate-400">{item.label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
+            Finish a lesson session to start building your weekly learning trend.
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-        <MetricCard
-          label="Focus score"
-          value={88}
-          suffix="%"
-          detail="High-quality attention across your recent sessions."
-          gradient="from-cyan-400 via-blue-500 to-violet-500"
-        />
-        <MetricCard
-          label="Retention rate"
-          value={84}
-          suffix="%"
-          detail="Strong recall from visual explanations and checkpoints."
-          gradient="from-lime-300 via-emerald-400 to-cyan-500"
-        />
+        {engagementMetric ? (
+          <MetricCard
+            label="Engagement Score"
+            value={engagementMetric.value}
+            suffix="%"
+            detail={`${engagementMetric.detail} Based on your recent lesson activity.`}
+            gradient="from-cyan-400 via-blue-500 to-violet-500"
+            trend={engagementMetric.trend}
+          />
+        ) : (
+          <div className="rounded-[1.6rem] border border-dashed border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-slate-300">
+            Start a lesson to unlock your Engagement Score.
+          </div>
+        )}
+        {recallMetric ? (
+          <MetricCard
+            label="Recall Strength"
+            value={recallMetric.value}
+            suffix="%"
+            detail={`${recallMetric.detail} Based on your recent activity and quiz performance.`}
+            gradient="from-lime-300 via-emerald-400 to-cyan-500"
+            trend={recallMetric.trend}
+          />
+        ) : (
+          <div className="rounded-[1.6rem] border border-dashed border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-slate-300">
+            Answer quiz questions to unlock your Recall Strength.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -269,8 +362,17 @@ export function Dashboard() {
     courseProgress,
     activities,
     lastOpenedCourseId,
+    lessonSessions,
+    quizAttempts,
+    completedCourses,
     syncGeneratedCourses
   } = useLearningStore();
+  const safeGeneratedCourses = Array.isArray(generatedCourses) ? generatedCourses.filter(Boolean) : [];
+  const safeCourseProgress = courseProgress && typeof courseProgress === "object" ? courseProgress : {};
+  const safeActivities = Array.isArray(activities) ? activities.filter(Boolean) : [];
+  const safeLessonSessions = Array.isArray(lessonSessions) ? lessonSessions.filter(Boolean) : [];
+  const safeQuizAttempts = Array.isArray(quizAttempts) ? quizAttempts.filter(Boolean) : [];
+  const safeCompletedCourses = completedCourses && typeof completedCourses === "object" ? completedCourses : {};
   const [draft, setDraft] = useState(
     "Paste a dense topic and turn it into a visual sprint with bullets, hooks, and a recap prompt."
   );
@@ -299,14 +401,19 @@ export function Dashboard() {
   }, [syncGeneratedCourses]);
 
   const visibleCourses = useMemo(() => {
-    const source = generatedCourses.length ? generatedCourses : demoCourses;
-    return source.slice(0, 3).map((course, index) => {
-      const savedProgress = courseProgress[course.id]?.progress;
-      const progress = clampPercent(savedProgress ?? [32, 53, 74][index] ?? 0);
-      const earnedXp = courseProgress[course.id]?.xp || course.xp || 0;
-      return { ...course, progress, earnedXp };
+    return safeGeneratedCourses.slice(0, 3).map((course) => {
+      const savedProgress = safeCourseProgress[course.id]?.progress;
+      const progress = clampPercent(savedProgress ?? course.progress ?? 0);
+      const earnedXp = safeCourseProgress[course.id]?.xp || course.xp || 0;
+      const answeredCount = new Set(
+        safeQuizAttempts.filter((attempt) => attempt.courseId === course.id).map((attempt) => attempt.lessonId)
+      ).size;
+      const totalQuestions = 5;
+      const nextQuestion = safeCompletedCourses[course.id] ? totalQuestions : Math.min(answeredCount + 1, totalQuestions);
+
+      return { ...course, progress, earnedXp, nextQuestion, totalQuestions };
     });
-  }, [courseProgress, generatedCourses]);
+  }, [safeCompletedCourses, safeCourseProgress, safeGeneratedCourses, safeQuizAttempts]);
 
   const resumeCourse = useMemo(() => {
     return (
@@ -317,13 +424,58 @@ export function Dashboard() {
   }, [lastOpenedCourseId, visibleCourses]);
 
   const weeklyLearningData = useMemo(() => {
-    const minutesBoost = activities.length * 2 + Object.keys(courseProgress).length * 4;
-    const base = [28, 46, 34, 58, 41, 67, 54];
-    return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, index) => ({
-      label,
-      minutes: base[index] + ((minutesBoost + index * 3) % 12)
-    }));
-  }, [activities.length, courseProgress]);
+    if (!safeLessonSessions.length) return [];
+
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const buckets = Array.from({ length: 7 }, (_, offset) => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - (6 - offset));
+      return {
+        key: date.toDateString(),
+        label: dayNames[date.getDay()],
+        minutes: 0
+      };
+    });
+
+    const bucketMap = buckets.reduce((accumulator, bucket) => {
+      accumulator[bucket.key] = bucket;
+      return accumulator;
+    }, {});
+
+    safeLessonSessions.forEach((session) => {
+      const dateKey = new Date(session.endedAt || session.startedAt).toDateString();
+      if (bucketMap[dateKey]) {
+        bucketMap[dateKey].minutes += Math.round((session.activeMs || 0) / 60000);
+      }
+    });
+
+    return buckets;
+  }, [safeLessonSessions]);
+
+  const engagementMetric = useMemo(() => {
+    if (!safeLessonSessions.length) return null;
+    const metric = computeEngagementScore(safeLessonSessions);
+    if (!metric) return null;
+
+    const recent = computeEngagementScore(safeLessonSessions.slice(-3));
+    const previous = computeEngagementScore(safeLessonSessions.slice(-6, -3));
+    const trend = formatTrend((recent?.value || metric.value) - (previous?.value || recent?.value || metric.value));
+
+    return { ...metric, trend };
+  }, [safeLessonSessions]);
+
+  const recallMetric = useMemo(() => {
+    if (!safeQuizAttempts.length) return null;
+    const metric = computeRecallStrength(safeQuizAttempts, safeCourseProgress);
+    if (!metric) return null;
+
+    const recent = computeRecallStrength(safeQuizAttempts.slice(-4), safeCourseProgress);
+    const previous = computeRecallStrength(safeQuizAttempts.slice(-8, -4), safeCourseProgress);
+    const trend = formatTrend((recent?.value || metric.value) - (previous?.value || recent?.value || metric.value));
+
+    return { ...metric, trend };
+  }, [safeCourseProgress, safeQuizAttempts]);
 
   const todayProgress = useMemo(() => {
     const doneCount = dailyGoals.filter((goal) => goal.done).length;
@@ -331,17 +483,12 @@ export function Dashboard() {
   }, [dailyGoals]);
 
   const completedLessonsCount = useMemo(() => {
-    return Object.values(courseProgress).reduce((sum, item) => sum + Object.keys(item.completedLessons || {}).length, 0);
-  }, [courseProgress]);
+    return Object.values(safeCourseProgress).reduce((sum, item) => sum + Object.keys(item.completedLessons || {}).length, 0);
+  }, [safeCourseProgress]);
 
   const recentActivities = useMemo(() => {
-    if (activities.length) return activities.slice(0, 5);
-    return [
-      { id: "fallback-1", title: "Completed lesson", subtitle: "Marked Sine, Cosine, Tangent complete", xp: 30, type: "learning", timestamp: Date.now() - 1000 * 60 * 25 },
-      { id: "fallback-2", title: "Quiz score", subtitle: "Answered correctly in Unit Circle Memory Map", xp: 20, type: "quiz", timestamp: Date.now() - 1000 * 60 * 90 },
-      { id: "fallback-3", title: "XP gained", subtitle: "Momentum reward added to your learning streak", xp: 10, type: "learning", timestamp: Date.now() - 1000 * 60 * 240 }
-    ];
-  }, [activities]);
+    return safeActivities.slice(0, 5);
+  }, [safeActivities]);
 
   const leaderboardData = useMemo(() => {
     const currentUser = { name: "You", xp, streak };
@@ -439,12 +586,17 @@ export function Dashboard() {
                     <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Continue Learning</p>
                     <h2 className="mt-3 text-[3rem] font-black leading-[1.02] text-white">Resume {resumeCourse.title}</h2>
                     <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                      Return to your last active course with the next lesson already queued and progress ready to move.
+                      Jump straight back into the quiz flow and continue from your next active checkpoint.
                     </p>
                     <div className="mt-6 flex flex-wrap items-center gap-3 text-sm font-bold text-slate-300">
                       <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{resumeCourse.category}</span>
                       <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{resumeCourse.duration}</span>
                       <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{resumeCourse.progress}% complete</span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                        {safeCompletedCourses[resumeCourse.id]
+                          ? "Assessment completed"
+                          : `Question ${resumeCourse.nextQuestion} of ${resumeCourse.totalQuestions}`}
+                      </span>
                     </div>
                     <div className="mt-6 h-3 rounded-full bg-white/10">
                       <motion.div
@@ -480,7 +632,9 @@ export function Dashboard() {
                       <div className="rounded-[1.6rem] border border-white/15 bg-slate-950/20 p-5 backdrop-blur">
                         <p className="text-sm font-bold text-white/85">Next move</p>
                         <p className="mt-2 text-base leading-7 text-white/85">
-                          Finish the next lesson, clear one quiz, and convert today into visible momentum.
+                          {safeCompletedCourses[resumeCourse.id]
+                            ? "Review the finished assessment or start a fresh AI-generated course."
+                            : `You are on Question ${resumeCourse.nextQuestion} of ${resumeCourse.totalQuestions}.`}
                         </p>
                       </div>
                     </div>
@@ -489,17 +643,41 @@ export function Dashboard() {
               </GlassPanel>
             ) : null}
 
-            <div className="mt-7 grid gap-5 xl:grid-cols-3">
-              {visibleCourses.map((course, index) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  progress={course.progress}
-                  earnedXp={course.earnedXp}
-                  delay={index * 0.06}
-                />
-              ))}
-            </div>
+            <AnimatePresence mode="popLayout">
+              {visibleCourses.length ? (
+                <div className="mt-7 grid gap-5 xl:grid-cols-3">
+                  {visibleCourses.map((course, index) => (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      progress={course.progress}
+                      earnedXp={course.earnedXp}
+                      delay={index * 0.06}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <motion.div
+                  key="empty-courses"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mt-7 rounded-[2rem] border border-dashed border-white/12 bg-white/[0.03] p-8"
+                >
+                  <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-300">No live courses yet</p>
+                  <h3 className="mt-3 text-3xl font-black text-white">Generate your first AI learning path.</h3>
+                  <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
+                    Your latest three AI-generated courses will appear here with real progress, XP, and activity.
+                  </p>
+                  <Link
+                    href="/ai-lab"
+                    className="mt-6 inline-flex rounded-full bg-white px-6 py-3 text-base font-black text-slate-950 transition hover:scale-[1.02]"
+                  >
+                    Open AI Transform
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="mt-8 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
               <GlassPanel id="ai-transform-lab-preview" className="p-7">
@@ -559,7 +737,11 @@ export function Dashboard() {
                 <p className="mt-4 max-w-3xl text-lg text-slate-300">
                   The system tracks how consistently you learn, not just how often you open a course.
                 </p>
-                <AnalyticsChart data={weeklyLearningData} />
+                <AnalyticsChart
+                  data={weeklyLearningData}
+                  engagementMetric={engagementMetric}
+                  recallMetric={recallMetric}
+                />
               </GlassPanel>
 
               <GlassPanel id="tasks" className="p-7">
@@ -599,11 +781,17 @@ export function Dashboard() {
                   A quick timeline of lessons completed, quiz performance, and XP gained.
                 </p>
 
-                <div className="mt-8 space-y-4">
-                  {recentActivities.map((activity, index) => (
-                    <ActivityRow key={activity.id} activity={activity} index={index} />
-                  ))}
-                </div>
+                {recentActivities.length ? (
+                  <div className="mt-8 space-y-4">
+                    {recentActivities.map((activity, index) => (
+                      <ActivityRow key={activity.id} activity={activity} index={index} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-8 rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-slate-300">
+                    Activity starts appearing here as soon as you generate a course, open a lesson, or complete a quiz.
+                  </div>
+                )}
               </GlassPanel>
 
               <GlassPanel className="p-7">
