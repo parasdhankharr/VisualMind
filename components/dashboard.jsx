@@ -2,24 +2,50 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { leaderboard } from "@/data/courses";
 import { getRelativeTimeLabel } from "@/lib/learning";
 import { useLearningStore } from "@/store/use-learning-store";
 
-const sidebarLinks = ["Home", "My Courses", "Progress", "Activity", "Profile"];
+const sidebarLinks = [
+  { id: "home", label: "Home", icon: HomeIcon },
+  { id: "courses", label: "Courses", icon: LibraryIcon },
+  { id: "analytics", label: "Analytics", icon: ChartIcon },
+  { id: "activity", label: "Activity", icon: PulseIcon },
+  { id: "social", label: "Social", icon: UsersIcon }
+];
 
 const defaultGoals = [
-  { id: "lessons", label: "Complete 2 lessons", detail: "Push your active path forward with two focused lesson completions." },
-  { id: "quiz", label: "Finish 1 quiz", detail: "Lock in recall with one checkpoint quiz before you stop." },
-  { id: "review", label: "Review previous topic", detail: "Spend five minutes revisiting your most recent concept map." }
+  { id: "lessons", label: "Complete 2 lessons", detail: "Two focused lesson closures." },
+  { id: "quiz", label: "Finish 1 quiz", detail: "Lock recall before you stop." },
+  { id: "review", label: "Review previous topic", detail: "Five minutes of revision." }
 ];
 
-const achievementBadges = [
-  { title: "Streak Master", detail: "7 days in a row", color: "from-cyan-400 via-blue-500 to-violet-500" },
-  { title: "Fast Learner", detail: "3 lessons finished this week", color: "from-lime-300 via-emerald-400 to-cyan-500" },
-  { title: "Quiz Pro", detail: "Average score above 85%", color: "from-fuchsia-400 via-rose-500 to-orange-400" }
-];
+const sectionVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.07
+    }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 18 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.42,
+      ease: [0.22, 1, 0.36, 1]
+    }
+  }
+};
+
+const SIDEBAR_COLLAPSED_WIDTH = 96;
+const SIDEBAR_EXPANDED_WIDTH = 248;
+const SIDEBAR_GAP = 24;
+const MAIN_DASHBOARD_MARGIN = 112;
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value || 0)));
@@ -29,10 +55,55 @@ function clampValue(value, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value));
 }
 
-function formatTrend(change) {
-  if (change > 3) return { arrow: "↑", label: "improving", tone: "text-emerald-200" };
-  if (change < -3) return { arrow: "↓", label: "dropping", tone: "text-rose-200" };
-  return { arrow: "→", label: "steady", tone: "text-slate-300" };
+function parseMinutes(value) {
+  const match = String(value || "").match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function formatMinutes(minutes) {
+  if (minutes <= 0) return "Review ready";
+  if (minutes < 60) return `${minutes} min left`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+
+  if (!remainder) return `${hours} hr left`;
+  return `${hours}h ${remainder}m left`;
+}
+
+function getTrendMeta(change) {
+  const delta = Math.round(change || 0);
+
+  if (delta <= -4) {
+    return {
+      delta,
+      label: "dropping",
+      arrow: "↓",
+      tone: "text-rose-200",
+      badgeClass: "border-rose-500/30 bg-rose-500/12 text-rose-100",
+      emphasis: "Revision risk"
+    };
+  }
+
+  if (delta >= 4) {
+    return {
+      delta,
+      label: "improving",
+      arrow: "↑",
+      tone: "text-[#00ff87]",
+      badgeClass: "border-[#00ff87]/20 bg-[rgba(0,255,135,0.1)] text-[#00ff87] shadow-[0_0_18px_rgba(0,255,135,0.08)]",
+      emphasis: "Momentum building"
+    };
+  }
+
+  return {
+    delta,
+    label: "steady",
+    arrow: "→",
+    tone: "text-zinc-300",
+    badgeClass: "border-white/10 bg-white/[0.04] text-zinc-300",
+    emphasis: "Stable"
+  };
 }
 
 function computeEngagementScore(sessions) {
@@ -52,7 +123,6 @@ function computeEngagementScore(sessions) {
 
   return {
     value: score,
-    detail: "Based on active lesson time, interactions, and idle periods.",
     activeRatio,
     interactionRate
   };
@@ -78,14 +148,264 @@ function computeRecallStrength(quizAttempts, courseProgress) {
 
   return {
     value: score,
-    detail: "Based on quiz accuracy, retries, and lesson completion consistency.",
     accuracy,
-    retries
+    retries,
+    completionConsistency
   };
 }
 
-function GlassPanel({ children, className = "" }) {
-  return <div className={`glass rounded-[2rem] border border-white/10 bg-[#1b2029]/92 ${className}`}>{children}</div>;
+function buildRecallSeries(quizAttempts) {
+  if (!quizAttempts.length) return [];
+
+  const sortedAttempts = [...quizAttempts].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  const values = [];
+
+  sortedAttempts.forEach((_, index) => {
+    const windowStart = Math.max(0, index - 3);
+    const sample = sortedAttempts.slice(windowStart, index + 1);
+    const correctCount = sample.filter((attempt) => attempt.correct).length;
+    values.push(clampPercent((correctCount / sample.length) * 100));
+  });
+
+  return values.slice(-8);
+}
+
+function getCourseStatus(course, state, isCompleted) {
+  const lessons = Array.isArray(course.lessons) ? course.lessons : [];
+  const completedLessons = state?.completedLessons || {};
+  const nextLesson = lessons.find((lesson) => !completedLessons[lesson.id]) || lessons[lessons.length - 1];
+  const remainingMinutes = lessons
+    .filter((lesson) => !completedLessons[lesson.id])
+    .reduce((sum, lesson) => sum + parseMinutes(lesson.duration), 0);
+
+  if (!lessons.length) {
+    return {
+      nextLessonTitle: "AI path ready",
+      timeRemaining: formatMinutes(parseMinutes(course.duration))
+    };
+  }
+
+  if (isCompleted) {
+    return {
+      nextLessonTitle: "Assessment review",
+      timeRemaining: "Review ready"
+    };
+  }
+
+  return {
+    nextLessonTitle: nextLesson?.title || "Start first lesson",
+    timeRemaining: formatMinutes(remainingMinutes || parseMinutes(nextLesson?.duration) || parseMinutes(course.duration))
+  };
+}
+
+function resolveActivityMeta(activity) {
+  const title = String(activity.title || "");
+
+  if (activity.type === "transform" && /explored concept breakdown|reviewed key takeaway/i.test(title)) {
+    return {
+      key: "concept-sprint",
+      title: "Concept Sprint",
+      subtitle: (count) => `${count} topics refined`
+    };
+  }
+
+  if (/completed lesson/i.test(title)) {
+    return {
+      key: "lesson-sprint",
+      title: "Lesson Sprint",
+      subtitle: (count) => `${count} lessons completed`
+    };
+  }
+
+  if (/completed quiz/i.test(title)) {
+    return {
+      key: "quiz-run",
+      title: "Checkpoint Run",
+      subtitle: (count) => `${count} quizzes cleared`
+    };
+  }
+
+  if (/viewed lesson|opened course/i.test(title)) {
+    return {
+      key: "study-warmup",
+      title: "Study Warm-up",
+      subtitle: (count) => `${count} learning sessions resumed`
+    };
+  }
+
+  return {
+    key: activity.id,
+    title,
+    subtitle: () => activity.subtitle || "Learning activity recorded."
+  };
+}
+
+function groupActivities(activities) {
+  const groups = [];
+
+  activities.slice(0, 10).forEach((activity) => {
+    const meta = resolveActivityMeta(activity);
+    const lastGroup = groups[groups.length - 1];
+
+    if (lastGroup && lastGroup.key === meta.key && activity.type === lastGroup.type) {
+      lastGroup.count += 1;
+      lastGroup.totalXp += activity.xp || 0;
+      lastGroup.timestamp = Math.max(lastGroup.timestamp, activity.timestamp || 0);
+      lastGroup.activities.push(activity);
+      return;
+    }
+
+    groups.push({
+      key: meta.key,
+      type: activity.type,
+      count: 1,
+      totalXp: activity.xp || 0,
+      timestamp: activity.timestamp || 0,
+      meta,
+      activities: [activity]
+    });
+  });
+
+  return groups.slice(0, 6).map((group) => {
+    if (group.count === 1 && group.key === group.activities[0].id) {
+      const [activity] = group.activities;
+      return {
+        id: activity.id,
+        title: activity.title,
+        subtitle: activity.subtitle || "Learning activity recorded.",
+        type: activity.type,
+        timestamp: activity.timestamp,
+        xp: activity.xp || 0
+      };
+    }
+
+    return {
+      id: `${group.key}-${group.timestamp}`,
+      title: group.meta.title,
+      subtitle: group.meta.subtitle(group.count, group.activities),
+      type: group.type,
+      timestamp: group.timestamp,
+      xp: group.totalXp
+    };
+  });
+}
+
+function ShellIcon({ children, className = "h-5 w-5" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+function HomeIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+      <path d="M9 21v-6h6v6" />
+    </ShellIcon>
+  );
+}
+
+function LibraryIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M5 4h13a2 2 0 0 1 2 2v13H7a2 2 0 0 0-2 2V4Z" />
+      <path d="M7 19V6" />
+      <path d="M10 8h6" />
+      <path d="M10 12h6" />
+    </ShellIcon>
+  );
+}
+
+function ChartIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M4 19h16" />
+      <path d="M7 16V9" />
+      <path d="M12 16V5" />
+      <path d="M17 16v-4" />
+    </ShellIcon>
+  );
+}
+
+function PulseIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M3 12h4l2.5-5 4 10 2.5-5H21" />
+    </ShellIcon>
+  );
+}
+
+function UsersIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+      <circle cx="9.5" cy="7" r="3" />
+      <path d="M20 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16.5 4.13a3 3 0 0 1 0 5.74" />
+    </ShellIcon>
+  );
+}
+
+function BoltIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M13 2 5 14h6l-1 8 8-12h-6l1-8Z" />
+    </ShellIcon>
+  );
+}
+
+function PlayIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="m8 5 11 7-11 7V5Z" />
+    </ShellIcon>
+  );
+}
+
+function SparkIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3Z" />
+      <path d="m18 15 .9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15Z" />
+    </ShellIcon>
+  );
+}
+
+function Surface({ children, className = "", layer = 2 }) {
+  return (
+    <div
+      className={`rounded-[24px] ${
+        layer === 3 ? "bg-[#151515]" : "bg-[#111111]"
+      } shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionKick({ label, title, detail, action }) {
+  return (
+    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{label}</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white sm:text-[2rem]">{title}</h2>
+        {detail ? <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">{detail}</p> : null}
+      </div>
+      {action}
+    </div>
+  );
 }
 
 function CountUpNumber({ value, suffix = "", prefix = "" }) {
@@ -118,239 +438,404 @@ function CountUpNumber({ value, suffix = "", prefix = "" }) {
   );
 }
 
-function CourseCard({ course, progress, earnedXp, delay = 0 }) {
+function GlowBar({ value, className = "", trackClassName = "" }) {
+  return (
+    <div className={`h-2 overflow-hidden rounded-full bg-black/25 ${trackClassName}`}>
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${value}%` }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className={`h-full rounded-full bg-gradient-to-r from-[#4facfe] via-[#3d8bff] to-[#5b2cff] ${className}`}
+        style={{ filter: "drop-shadow(0 0 10px rgba(79, 172, 254, 0.7)) drop-shadow(0 0 22px rgba(91, 44, 255, 0.35))" }}
+      />
+    </div>
+  );
+}
+
+function SidebarItem({ item, expanded }) {
+  const Icon = item.icon;
+
+  return (
+    <a
+      href={`#${item.id}`}
+      aria-label={item.label}
+      className="group flex items-center gap-3 rounded-[12px] px-3 py-3 text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#1a1a1a] text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <Icon />
+      </span>
+      <span
+        className={`min-w-0 overflow-hidden text-sm font-semibold tracking-[0.01em] opacity-100 transition-all duration-200 ${
+          expanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+        }`}
+      >
+        {item.label}
+      </span>
+    </a>
+  );
+}
+
+function StatPill({ label, value, tone = "text-white" }) {
+  return (
+    <div className="rounded-[12px] bg-[#1a1a1a] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</p>
+      <p className={`mt-2 text-lg font-bold ${tone}`}>{value}</p>
+    </div>
+  );
+}
+
+function TodayRing({ value, expanded }) {
+  const size = expanded ? 120 : 60;
+  const strokeWidth = 6;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progressOffset = circumference - (clampPercent(value) / 100) * circumference;
+
+  return (
+    <div
+      className={`relative flex shrink-0 items-center justify-center transition-[width,height] duration-200 ${
+        expanded ? "h-[120px] w-[120px]" : "h-[60px] w-[60px]"
+      }`}
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 h-full w-full -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#today-ring-gradient)"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={progressOffset}
+          style={{ filter: "drop-shadow(0 0 10px rgba(79, 172, 254, 0.35))" }}
+        />
+        <defs>
+          <linearGradient id="today-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#4facfe" />
+            <stop offset="100%" stopColor="#6b46ff" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div className="relative flex flex-col items-center justify-center text-center">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">TODAY</span>
+        <span className={`font-bold tracking-[-0.05em] text-white ${expanded ? "text-[1.9rem]" : "text-base"}`}>
+          {value}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function CourseCard({ course, delay = 0 }) {
   return (
     <motion.article
-      layout
-      initial={{ opacity: 0, y: 18, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -18, scale: 0.92 }}
-      transition={{ duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, scale: 1.01 }}
-      className="rounded-[2rem] border border-white/10 bg-[#1b2029]/96 p-5 shadow-[0_18px_45px_rgba(0,0,0,0.18)]"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)]"
     >
-      <div className={`h-40 rounded-[1.7rem] bg-gradient-to-br ${course.color} p-5`}>
-        <p className="text-base font-bold text-white/90">{course.category}</p>
-        <div className="flex h-full items-end">
-          <p className="text-[3rem] font-black tracking-tight text-white">{earnedXp} XP</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{course.category}</p>
+          <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">{course.title}</h3>
+        </div>
+        <div className="rounded-[12px] bg-[#1a1a1a] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">XP</p>
+          <p className="mt-1 text-lg font-bold text-white">{course.earnedXp}</p>
         </div>
       </div>
 
-      <h3 className="mt-5 text-[2rem] font-black leading-none text-white">{course.title}</h3>
-      <p className="mt-3 min-h-[4.2rem] text-base leading-7 text-slate-300">{course.summary}</p>
-
-      <div className="mt-5 h-2 rounded-full bg-white/10">
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
+          animate={{ width: `${course.progress}%` }}
           transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-          className="h-2 rounded-full bg-[#69e4ef]"
+          className="h-full rounded-full bg-gradient-to-r from-[#4facfe] to-[#00f2fe]"
         />
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-sm font-semibold text-slate-400">
-        <span>{progress}% complete</span>
-        <span>{course.lessons?.length || 0} visual lessons</span>
+      <div className="mt-4 grid gap-3 rounded-[12px] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:grid-cols-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</p>
+          <p className="mt-2 text-sm font-semibold text-white">{course.progress}% complete</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Next Lesson</p>
+          <p className="mt-2 text-sm font-semibold text-white">{course.nextLessonTitle}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Time Remaining</p>
+          <p className="mt-2 text-sm font-semibold text-white">{course.timeRemaining}</p>
+        </div>
       </div>
 
-      <Link
-        href={`/courses/${course.id}`}
-        className="mt-5 inline-flex rounded-full bg-white px-6 py-3 text-base font-black text-slate-950 transition hover:scale-[1.02]"
-      >
-        Continue learning
-      </Link>
+      <div className="mt-5 flex items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+            {course.lessons?.length || 0} lessons
+          </span>
+          <span className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+            {course.duration}
+          </span>
+        </div>
+        <Link
+          href={`/courses/${course.id}`}
+          className="inline-flex items-center gap-2 rounded-full bg-[#1a1a1a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#222222]"
+        >
+          <PlayIcon className="h-4 w-4" />
+          Open Path
+        </Link>
+      </div>
     </motion.article>
   );
 }
 
-function AchievementCard({ badge, delay = 0 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, scale: 1.02 }}
-      className="rounded-[1.75rem] border border-white/10 bg-[#262b34] p-4"
-    >
-      <div className={`h-28 rounded-[1.3rem] bg-gradient-to-br ${badge.color}`} />
-      <p className="mt-4 text-lg font-black text-white">{badge.title}</p>
-      <p className="mt-1 text-sm text-slate-400">{badge.detail}</p>
-    </motion.div>
-  );
-}
-
-function MetricCard({ label, value, suffix = "", detail, gradient, trend }) {
-  return (
-    <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5">
-      <div className={`h-1.5 w-16 rounded-full bg-gradient-to-r ${gradient}`} />
-      <p className="mt-4 text-sm font-medium text-slate-400">{label}</p>
-      <p className="mt-2 text-3xl font-black text-white">
-        <CountUpNumber value={value} suffix={suffix} />
-      </p>
-      {trend ? <p className={`mt-2 text-xs font-bold uppercase tracking-[0.16em] ${trend.tone}`}>{trend.arrow} {trend.label}</p> : null}
-      <p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>
-    </div>
-  );
-}
-
-function AnalyticsChart({ data, engagementMetric, recallMetric }) {
-  if (!data.length && !engagementMetric && !recallMetric) {
-    return (
-      <div className="mt-6 rounded-[1.7rem] border border-dashed border-white/10 bg-white/[0.04] p-6">
-        <p className="text-lg font-black text-white">Start learning to see your stats</p>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-          Engagement Score and Recall Strength appear after you spend time in lessons and submit quizzes.
-        </p>
-      </div>
-    );
-  }
-
+function LearningBars({ data }) {
   const maxValue = Math.max(...(data.length ? data.map((item) => item.minutes) : [1]), 1);
 
   return (
-    <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.04] p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-bold uppercase tracking-[0.12em] text-slate-300">Weekly learning time</p>
-          <p className="text-xs text-slate-500">7 day trend</p>
+    <div className="rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)]">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Focus Time</p>
+          <p className="mt-2 text-xl font-bold text-white">Weekly learning load</p>
         </div>
-        {data.length ? (
-          <div className="mt-5 flex h-44 items-end gap-3">
-            {data.map((item, index) => (
-              <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
-                <div className="flex h-full w-full items-end">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${(item.minutes / maxValue) * 100}%` }}
-                    transition={{ duration: 0.7, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                    className="w-full rounded-t-[1rem] bg-gradient-to-t from-cyan-400 via-blue-500 to-violet-500"
-                  />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-bold text-white">{item.minutes}m</p>
-                  <p className="text-xs text-slate-400">{item.label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-5 rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
-            Finish a lesson session to start building your weekly learning trend.
-          </div>
-        )}
+        <p className="text-sm text-zinc-400">Last 7 days</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-        {engagementMetric ? (
-          <MetricCard
-            label="Engagement Score"
-            value={engagementMetric.value}
-            suffix="%"
-            detail={`${engagementMetric.detail} Based on your recent lesson activity.`}
-            gradient="from-cyan-400 via-blue-500 to-violet-500"
-            trend={engagementMetric.trend}
-          />
-        ) : (
-          <div className="rounded-[1.6rem] border border-dashed border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-slate-300">
-            Start a lesson to unlock your Engagement Score.
-          </div>
-        )}
-        {recallMetric ? (
-          <MetricCard
-            label="Recall Strength"
-            value={recallMetric.value}
-            suffix="%"
-            detail={`${recallMetric.detail} Based on your recent activity and quiz performance.`}
-            gradient="from-lime-300 via-emerald-400 to-cyan-500"
-            trend={recallMetric.trend}
-          />
-        ) : (
-          <div className="rounded-[1.6rem] border border-dashed border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-slate-300">
-            Answer quiz questions to unlock your Recall Strength.
-          </div>
-        )}
-      </div>
+      {data.length ? (
+        <div className="mt-6 flex h-44 items-end gap-3">
+          {data.map((item) => (
+            <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
+              <div className="flex h-full w-full items-end rounded-t-[20px] bg-black/30">
+                <div
+                  className="w-full rounded-t-[20px]"
+                  style={{
+                    height: `${Math.max((item.minutes / maxValue) * 100, item.minutes ? 12 : 4)}%`,
+                    background:
+                      "linear-gradient(180deg, rgba(0,242,254,1) 0%, rgba(79,172,254,1) 48%, rgba(66,92,255,1) 100%)",
+                    filter: "drop-shadow(0 0 10px rgba(0,242,254,0.26))"
+                  }}
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-white">{item.minutes}m</p>
+                <p className="text-xs text-zinc-500">{item.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-[12px] bg-[#1a1a1a] p-4 text-sm text-zinc-400">
+          Finish a lesson session to start building your weekly load profile.
+        </div>
+      )}
     </div>
   );
 }
 
-function GoalItem({ goal, onToggle, index }) {
+function Sparkline({ values, tone = "steady" }) {
+  if (!values.length) return null;
+
+  const width = 260;
+  const height = 88;
+  const padding = 8;
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values, minValue + 1);
+
+  const points = values.map((value, index) => {
+    const x = padding + (index / Math.max(values.length - 1, 1)) * (width - padding * 2);
+    const y = height - padding - ((value - minValue) / Math.max(maxValue - minValue, 1)) * (height - padding * 2);
+    return { x, y };
+  });
+
+  const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const areaPath = `M ${points[0].x} ${height - padding} L ${pointString
+    .split(" ")
+    .join(" L ")} L ${points[points.length - 1].x} ${height - padding} Z`;
+  const lastPoint = points[points.length - 1];
+
   return (
-    <motion.button
-      type="button"
-      onClick={() => onToggle(goal.id)}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, delay: index * 0.06 }}
-      whileHover={{ scale: 1.01 }}
-      className={`flex w-full items-start gap-4 rounded-[1.5rem] border p-4 text-left transition ${
-        goal.done ? "border-cyan-300/25 bg-cyan-300/10" : "border-white/10 bg-white/[0.04]"
-      }`}
-    >
-      <motion.span
-        animate={{
-          backgroundColor: goal.done ? "rgba(103,232,249,1)" : "rgba(255,255,255,0.04)",
-          borderColor: goal.done ? "rgba(103,232,249,1)" : "rgba(255,255,255,0.12)"
-        }}
-        className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-black text-slate-950"
-      >
-        {goal.done ? "✓" : ""}
-      </motion.span>
-      <div>
-        <p className="text-lg font-black text-white">{goal.label}</p>
-        <p className="mt-1 text-sm leading-6 text-slate-400">{goal.detail}</p>
-      </div>
-    </motion.button>
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-24 w-full" role="img" aria-label="Recall strength trend">
+      <defs>
+        <linearGradient id={`recall-fill-${tone}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(0,229,255,0.34)" />
+          <stop offset="100%" stopColor="rgba(0,229,255,0)" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#recall-fill-${tone})`} />
+      <polyline
+        points={pointString}
+        fill="none"
+        stroke="#00E5FF"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ filter: "drop-shadow(0 0 5px rgba(0, 229, 255, 0.4))" }}
+      />
+      <circle
+        cx={lastPoint.x}
+        cy={lastPoint.y}
+        r="4"
+        fill="#00E5FF"
+        style={{ filter: "drop-shadow(0 0 5px rgba(0, 229, 255, 0.4))" }}
+      />
+    </svg>
   );
 }
 
-function ActivityRow({ activity, index }) {
-  const toneStyles = {
-    learning: "bg-cyan-300/18 text-cyan-100 border-cyan-300/20",
-    quiz: "bg-violet-400/18 text-violet-100 border-violet-400/20",
-    default: "bg-lime-300/18 text-lime-100 border-lime-300/20"
+function RecallWidget({ metric, resumeHref }) {
+  if (!metric) {
+    return (
+      <Surface layer={3} className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Recall Strength</p>
+            <p className="mt-2 text-xl font-bold text-white">Trend locked</p>
+          </div>
+          <span className="rounded-full bg-[#1a1a1a] px-3 py-1 text-xs font-medium text-zinc-400">
+            No data yet
+          </span>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="skeleton h-20 rounded-[12px] bg-white/[0.06]" />
+          <div className="skeleton h-3 w-3/4 rounded-full bg-white/[0.06]" />
+          <div className="skeleton h-3 w-1/2 rounded-full bg-white/[0.06]" />
+        </div>
+
+        <Link
+          href={resumeHref}
+          className="mt-5 inline-flex rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+        >
+          Complete your first lesson to unlock trends
+        </Link>
+      </Surface>
+    );
+  }
+
+  const riskCopy =
+    metric.trend.label === "dropping" ? `${Math.abs(metric.trend.delta)}pt drop. Revise now.` : metric.trend.emphasis;
+
+  return (
+    <Surface layer={3} className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Recall Strength</p>
+          <p className="mt-2 text-3xl font-bold text-white">{metric.value}%</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${metric.trend.badgeClass}`}>
+          {metric.trend.arrow} {riskCopy}
+        </span>
+      </div>
+
+      <motion.div
+        animate={
+          metric.trend.label === "dropping"
+            ? {
+                boxShadow: [
+                  "0 0 0 rgba(0,242,254,0.08)",
+                  "0 0 22px rgba(0,242,254,0.22)",
+                  "0 0 0 rgba(0,242,254,0.08)"
+                ]
+              }
+            : { boxShadow: "0 0 0 rgba(0,242,254,0)" }
+        }
+        transition={{ duration: 1.8, repeat: metric.trend.label === "dropping" ? Infinity : 0 }}
+        className="mt-5 rounded-[12px] bg-[#1a1a1a] p-3"
+      >
+        <Sparkline values={metric.series} tone={metric.trend.label} />
+      </motion.div>
+
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <span className="text-zinc-400">Accuracy {metric.accuracyLabel}</span>
+        <span className={metric.trend.tone}>
+          {metric.trend.label === "dropping" ? "Loss aversion active" : metric.trend.emphasis}
+        </span>
+      </div>
+    </Surface>
+  );
+}
+
+function ActivityRow({ item, index }) {
+  const toneClasses = {
+    learning: "bg-[#1a1a1a] text-white",
+    quiz: "bg-[#1a1a1a] text-white",
+    transform: "bg-cyan-500/[0.08] text-cyan-100"
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
+      initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="relative pl-8"
+      className="rounded-[24px] bg-[#111111] p-4"
     >
-      <div className="absolute left-0 top-1 h-full w-px bg-white/10" />
-      <div className="absolute left-[-5px] top-2 h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.55)]" />
-      <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-base font-black text-white">{activity.title}</p>
-          <span className={`rounded-full border px-3 py-1 text-xs font-bold ${toneStyles[activity.type] || toneStyles.default}`}>
-            {activity.xp > 0 ? `+${activity.xp} XP` : activity.type}
-          </span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-white">{item.title}</p>
+          <p className="mt-1 text-sm text-zinc-300">{item.subtitle}</p>
         </div>
-        <p className="mt-2 text-sm text-slate-300">{activity.subtitle || "Learning activity recorded."}</p>
-        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-slate-500">{getRelativeTimeLabel(activity.timestamp)}</p>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${toneClasses[item.type] || toneClasses.learning}`}>
+          {item.xp > 0 ? `+${item.xp} XP` : item.type}
+        </span>
       </div>
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {getRelativeTimeLabel(item.timestamp)}
+      </p>
     </motion.div>
   );
 }
 
-function LeaderboardRow({ item, index }) {
+function GoalRow({ goal, onToggle }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, delay: index * 0.05 }}
-      className="flex items-center justify-between rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+    <button
+      type="button"
+      onClick={() => onToggle(goal.id)}
+      className={`flex w-full items-start gap-3 rounded-[12px] p-4 text-left transition ${
+        goal.done ? "bg-white/[0.08]" : "bg-[#1a1a1a]"
+      }`}
     >
-      <div className="flex items-center gap-4">
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-white/8 text-sm font-black text-white">{index + 1}</div>
+      <span
+        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${
+          goal.done ? "border-[#00f2fe] bg-[#00f2fe] text-black" : "border-white/12 bg-black text-transparent"
+        }`}
+      >
+        ✓
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-white">{goal.label}</p>
+        <p className="mt-1 text-sm text-zinc-400">{goal.detail}</p>
+      </div>
+    </button>
+  );
+}
+
+function SocialRow({ item, index }) {
+  return (
+    <div className="flex items-center justify-between rounded-[12px] bg-white/[0.05] px-4 py-3 backdrop-blur-[20px]">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-xs font-semibold text-zinc-300">
+          {index + 1}
+        </div>
         <div>
-          <p className="text-base font-black text-white">{item.name}</p>
-          <p className="text-sm text-slate-400">{item.streak} day streak</p>
+          <p className="text-sm font-semibold text-white">{item.name}</p>
+          <p className="text-xs text-zinc-500">{item.streak} day streak</p>
         </div>
       </div>
-      <p className="text-lg font-black text-cyan-200">{item.xp} XP</p>
-    </motion.div>
+      <p className="text-sm font-semibold text-zinc-200">{item.xp} XP</p>
+    </div>
   );
 }
 
@@ -373,10 +858,8 @@ export function Dashboard() {
   const safeLessonSessions = Array.isArray(lessonSessions) ? lessonSessions.filter(Boolean) : [];
   const safeQuizAttempts = Array.isArray(quizAttempts) ? quizAttempts.filter(Boolean) : [];
   const safeCompletedCourses = completedCourses && typeof completedCourses === "object" ? completedCourses : {};
-  const [draft, setDraft] = useState(
-    "Paste a dense topic and turn it into a visual sprint with bullets, hooks, and a recap prompt."
-  );
   const [dailyGoals, setDailyGoals] = useState(defaultGoals.map((goal, index) => ({ ...goal, done: index !== 1 })));
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -401,19 +884,14 @@ export function Dashboard() {
   }, [syncGeneratedCourses]);
 
   const visibleCourses = useMemo(() => {
-    return safeGeneratedCourses.slice(0, 3).map((course) => {
-      const savedProgress = safeCourseProgress[course.id]?.progress;
-      const progress = clampPercent(savedProgress ?? course.progress ?? 0);
-      const earnedXp = safeCourseProgress[course.id]?.xp || course.xp || 0;
-      const answeredCount = new Set(
-        safeQuizAttempts.filter((attempt) => attempt.courseId === course.id).map((attempt) => attempt.lessonId)
-      ).size;
-      const totalQuestions = 5;
-      const nextQuestion = safeCompletedCourses[course.id] ? totalQuestions : Math.min(answeredCount + 1, totalQuestions);
-
-      return { ...course, progress, earnedXp, nextQuestion, totalQuestions };
+    return safeGeneratedCourses.slice(0, 4).map((course) => {
+      const state = safeCourseProgress[course.id];
+      const progress = clampPercent(state?.progress ?? course.progress ?? 0);
+      const earnedXp = state?.xp || course.xp || 0;
+      const status = getCourseStatus(course, state, Boolean(safeCompletedCourses[course.id]));
+      return { ...course, progress, earnedXp, ...status };
     });
-  }, [safeCompletedCourses, safeCourseProgress, safeGeneratedCourses, safeQuizAttempts]);
+  }, [safeCompletedCourses, safeCourseProgress, safeGeneratedCourses]);
 
   const resumeCourse = useMemo(() => {
     return (
@@ -454,27 +932,32 @@ export function Dashboard() {
   }, [safeLessonSessions]);
 
   const engagementMetric = useMemo(() => {
-    if (!safeLessonSessions.length) return null;
     const metric = computeEngagementScore(safeLessonSessions);
     if (!metric) return null;
 
     const recent = computeEngagementScore(safeLessonSessions.slice(-3));
     const previous = computeEngagementScore(safeLessonSessions.slice(-6, -3));
-    const trend = formatTrend((recent?.value || metric.value) - (previous?.value || recent?.value || metric.value));
 
-    return { ...metric, trend };
+    return {
+      ...metric,
+      trend: getTrendMeta((recent?.value || metric.value) - (previous?.value || recent?.value || metric.value))
+    };
   }, [safeLessonSessions]);
 
   const recallMetric = useMemo(() => {
-    if (!safeQuizAttempts.length) return null;
     const metric = computeRecallStrength(safeQuizAttempts, safeCourseProgress);
     if (!metric) return null;
 
-    const recent = computeRecallStrength(safeQuizAttempts.slice(-4), safeCourseProgress);
-    const previous = computeRecallStrength(safeQuizAttempts.slice(-8, -4), safeCourseProgress);
-    const trend = formatTrend((recent?.value || metric.value) - (previous?.value || recent?.value || metric.value));
+    const series = buildRecallSeries(safeQuizAttempts);
+    const recentAverage = series.slice(-3).reduce((sum, value) => sum + value, 0) / Math.max(series.slice(-3).length, 1);
+    const previousAverage = series.slice(-6, -3).reduce((sum, value) => sum + value, 0) / Math.max(series.slice(-6, -3).length, 1);
 
-    return { ...metric, trend };
+    return {
+      ...metric,
+      series,
+      accuracyLabel: `${clampPercent(metric.accuracy * 100)}%`,
+      trend: getTrendMeta(recentAverage - previousAverage)
+    };
   }, [safeCourseProgress, safeQuizAttempts]);
 
   const todayProgress = useMemo(() => {
@@ -486,8 +969,12 @@ export function Dashboard() {
     return Object.values(safeCourseProgress).reduce((sum, item) => sum + Object.keys(item.completedLessons || {}).length, 0);
   }, [safeCourseProgress]);
 
-  const recentActivities = useMemo(() => {
-    return safeActivities.slice(0, 5);
+  const focusMinutes = useMemo(() => {
+    return weeklyLearningData.reduce((sum, item) => sum + item.minutes, 0);
+  }, [weeklyLearningData]);
+
+  const groupedActivities = useMemo(() => {
+    return groupActivities(safeActivities);
   }, [safeActivities]);
 
   const leaderboardData = useMemo(() => {
@@ -497,328 +984,357 @@ export function Dashboard() {
       .slice(0, 5);
   }, [streak, xp]);
 
-  const aiPreviewBullets = useMemo(() => {
-    return [
-      "Break the topic into a visual sprint with bullets, hooks, and one recap.",
-      "Generate short checkpoints that reduce overload and improve retention.",
-      "Keep the structure simple enough to revise quickly before a quiz."
-    ];
-  }, []);
+  const sidebarWidth = sidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
 
   function toggleGoal(id) {
     setDailyGoals((current) => current.map((goal) => (goal.id === id ? { ...goal, done: !goal.done } : goal)));
   }
 
   return (
-    <main className="min-h-screen bg-midnight text-white">
-      <div className="fixed inset-0 bg-hero-grid bg-[length:42px_42px] opacity-[0.14]" />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_62%_18%,rgba(103,232,249,0.14),transparent_10%),linear-gradient(180deg,rgba(5,8,18,0.92),rgba(5,8,18,1))]" />
+    <main className="min-h-screen overflow-x-hidden bg-[#050505] text-white">
+      <style jsx global>{`
+        html {
+          scrollbar-width: thin;
+          scrollbar-color: #222 transparent;
+        }
 
-      <div className="relative mx-auto max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">
-        <div className="grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)]">
-          <GlassPanel className="p-6 lg:sticky lg:top-5 lg:h-[calc(100vh-2.5rem)]">
-            <Link href="/" className="text-[2.15rem] font-black tracking-tight text-white">
-              VisualMind
-            </Link>
+        ::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
 
-            <nav className="mt-12 space-y-3">
-              {sidebarLinks.map((item) => (
-                <a
-                  key={item}
-                  href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                  className="block rounded-2xl px-4 py-3 text-base font-semibold text-slate-300 transition hover:bg-white/5 hover:text-white"
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: #222;
+          border-radius: 999px;
+        }
+      `}</style>
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,172,254,0.08),transparent_26%),radial-gradient(circle_at_85%_10%,rgba(0,242,254,0.06),transparent_18%)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.88),rgba(5,5,5,1))]" />
+
+      <div className="relative mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+        <div className="relative">
+          <motion.aside
+            animate={{}}
+            onMouseEnter={() => setSidebarExpanded(true)}
+            onMouseLeave={() => setSidebarExpanded(false)}
+            onFocusCapture={() => setSidebarExpanded(true)}
+            onBlurCapture={() => setSidebarExpanded(false)}
+            className={`z-30 w-full overflow-hidden rounded-[24px] bg-white/[0.05] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[20px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-4 xl:h-[calc(100vh-2rem)] ${
+              sidebarExpanded ? "xl:w-[248px]" : "xl:w-[96px]"
+            }`}
+            style={{ zIndex: 40 }}
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#1a1a1a] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                  <BoltIcon />
+                </div>
+                <div
+                  className={`min-w-0 overflow-hidden opacity-100 transition-all duration-200 ${
+                    sidebarExpanded ? "xl:max-w-[130px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+                  }`}
                 >
-                  {item}
-                </a>
-              ))}
-            </nav>
+                  <p className="text-lg font-bold tracking-[-0.03em] text-white">VisualMind</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Learning OS</p>
+                </div>
+              </div>
 
-            <div className="mt-10 rounded-[1.9rem] border border-white/10 bg-white/5 p-5">
-              <p className="text-sm font-black uppercase tracking-[0.12em] text-lime-300">Today</p>
-              <p className="mt-3 text-5xl font-black text-white">{todayProgress}%</p>
-              <p className="mt-3 text-sm leading-7 text-slate-300">
-                Daily plan complete across lessons, quizzes, and revision.
-              </p>
-            </div>
+              <nav className="mt-6 space-y-2">
+                {sidebarLinks.map((item) => (
+                  <SidebarItem key={item.id} item={item} expanded={sidebarExpanded} />
+                ))}
+              </nav>
 
-            <Link
-              href="/ai-lab"
-              className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-[#68dfee] px-5 py-4 text-lg font-black text-slate-950 transition hover:scale-[1.02]"
-            >
-              AI Transform Lab
-            </Link>
-
-            <div className="mt-6 grid gap-3">
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-sm font-semibold text-slate-400">Learning XP</p>
-                <p className="mt-2 text-2xl font-black text-white">
-                  <CountUpNumber value={xp} />
+              <div className="mt-6 flex flex-col items-center rounded-[12px] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <TodayRing value={todayProgress} expanded={sidebarExpanded} />
+                <p
+                  className={`mt-3 overflow-hidden text-center text-xs text-zinc-400 transition-all duration-200 ${
+                    sidebarExpanded ? "xl:max-h-10 xl:opacity-100" : "xl:max-h-0 xl:opacity-0"
+                  }`}
+                >
+                  Two wins down. Keep the streak alive.
                 </p>
               </div>
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-sm font-semibold text-slate-400">Current streak</p>
-                <p className="mt-2 text-2xl font-black text-white">
-                  <CountUpNumber value={streak} suffix="d" />
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-auto hidden pt-10 xl:block">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black text-sm font-black text-white">
-                N
-              </div>
-            </div>
-          </GlassPanel>
-
-          <section className="min-w-0">
-            <div id="my-courses" className="px-1 pt-2">
-              <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">My Courses</p>
-              <h1 className="mt-2 text-5xl font-black tracking-tight text-white">Pick up where you left off.</h1>
-              <p className="mt-4 max-w-3xl text-lg text-slate-300">
-                Your visual curriculum stays organized around active momentum and revision readiness.
-              </p>
-            </div>
-
-            {resumeCourse ? (
-              <GlassPanel id="continue-learning" className="mt-7 overflow-hidden p-0">
-                <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-                  <div className="p-7">
-                    <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Continue Learning</p>
-                    <h2 className="mt-3 text-[3rem] font-black leading-[1.02] text-white">Resume {resumeCourse.title}</h2>
-                    <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                      Jump straight back into the quiz flow and continue from your next active checkpoint.
-                    </p>
-                    <div className="mt-6 flex flex-wrap items-center gap-3 text-sm font-bold text-slate-300">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{resumeCourse.category}</span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{resumeCourse.duration}</span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{resumeCourse.progress}% complete</span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                        {safeCompletedCourses[resumeCourse.id]
-                          ? "Assessment completed"
-                          : `Question ${resumeCourse.nextQuestion} of ${resumeCourse.totalQuestions}`}
-                      </span>
-                    </div>
-                    <div className="mt-6 h-3 rounded-full bg-white/10">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${resumeCourse.progress}%` }}
-                        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                        className="h-3 rounded-full bg-gradient-to-r from-cyan-300 via-blue-500 to-violet-500"
-                      />
-                    </div>
-                    <div className="mt-6 flex flex-wrap items-center gap-3">
-                      <Link
-                        href={`/courses/${resumeCourse.id}`}
-                        className="inline-flex rounded-full bg-white px-6 py-3 text-base font-black text-slate-950 transition hover:scale-[1.02]"
-                      >
-                        Resume Now
-                      </Link>
-                      <motion.span
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{ duration: 2.1, repeat: Infinity }}
-                        className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100"
-                      >
-                        Last active path
-                      </motion.span>
-                    </div>
-                  </div>
-
-                  <div className={`min-h-[18rem] bg-gradient-to-br ${resumeCourse.color} p-7`}>
-                    <div className="flex h-full flex-col justify-between">
-                      <div>
-                        <p className="text-sm font-bold uppercase tracking-[0.12em] text-white/85">Current path</p>
-                        <p className="mt-4 text-5xl font-black text-white">{resumeCourse.earnedXp} XP</p>
-                      </div>
-                      <div className="rounded-[1.6rem] border border-white/15 bg-slate-950/20 p-5 backdrop-blur">
-                        <p className="text-sm font-bold text-white/85">Next move</p>
-                        <p className="mt-2 text-base leading-7 text-white/85">
-                          {safeCompletedCourses[resumeCourse.id]
-                            ? "Review the finished assessment or start a fresh AI-generated course."
-                            : `You are on Question ${resumeCourse.nextQuestion} of ${resumeCourse.totalQuestions}.`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </GlassPanel>
-            ) : null}
-
-            <AnimatePresence mode="popLayout">
-              {visibleCourses.length ? (
-                <div className="mt-7 grid gap-5 xl:grid-cols-3">
-                  {visibleCourses.map((course, index) => (
-                    <CourseCard
-                      key={course.id}
-                      course={course}
-                      progress={course.progress}
-                      earnedXp={course.earnedXp}
-                      delay={index * 0.06}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <motion.div
-                  key="empty-courses"
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="mt-7 rounded-[2rem] border border-dashed border-white/12 bg-white/[0.03] p-8"
+              <Link
+                href="/ai-lab"
+                className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+              >
+                <SparkIcon className="h-4 w-4" />
+                <span
+                  className={`overflow-hidden opacity-100 transition-all duration-200 ${
+                    sidebarExpanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+                  }`}
                 >
-                  <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-300">No live courses yet</p>
-                  <h3 className="mt-3 text-3xl font-black text-white">Generate your first AI learning path.</h3>
-                  <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
-                    Your latest three AI-generated courses will appear here with real progress, XP, and activity.
-                  </p>
-                  <Link
-                    href="/ai-lab"
-                    className="mt-6 inline-flex rounded-full bg-white px-6 py-3 text-base font-black text-slate-950 transition hover:scale-[1.02]"
+                  AI Lab
+                </span>
+              </Link>
+
+              <div className="mt-auto pt-6">
+                <div className="flex items-center gap-3 rounded-[12px] bg-[#1a1a1a] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-sm font-semibold text-white">
+                    N
+                  </div>
+                  <div
+                    className={`min-w-0 overflow-hidden opacity-100 transition-all duration-200 ${
+                      sidebarExpanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+                    }`}
                   >
-                    Open AI Transform
-                  </Link>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="mt-8 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-              <GlassPanel id="ai-transform-lab-preview" className="p-7">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">AI Transform Lab Preview</p>
-                <h2 className="mt-3 max-w-2xl text-[3rem] font-black leading-[1.05] text-white">
-                  Turn a rough topic into a visual brief
-                </h2>
-                <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                  Draft the next concept and preview how the lab will reshape it for faster learning.
-                </p>
-
-                <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/5 p-5">
-                  <p className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-400">Paste content to transform</p>
-                  <textarea
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    className="min-h-[118px] w-full resize-none bg-transparent text-base leading-7 text-slate-200 outline-none placeholder:text-slate-500"
-                  />
+                    <p className="text-sm font-semibold text-white">Operator</p>
+                    <p className="text-xs text-zinc-500">Deep work mode</p>
+                  </div>
                 </div>
-
-                <div className="mt-5 grid gap-3">
-                  {aiPreviewBullets.map((item, index) => (
-                    <motion.div
-                      key={item}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.06 }}
-                      className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300"
-                    >
-                      {item}
-                    </motion.div>
-                  ))}
-                </div>
-              </GlassPanel>
-
-              <GlassPanel id="achievements" className="p-7">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Achievements</p>
-                <h2 className="mt-3 text-[3rem] font-black leading-[1.05] text-white">Badges earned this week</h2>
-                <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                  Momentum markers that reinforce consistency and learning quality.
-                </p>
-
-                <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                  {achievementBadges.map((badge, index) => (
-                    <AchievementCard key={badge.title} badge={badge} delay={index * 0.06} />
-                  ))}
-                </div>
-              </GlassPanel>
+              </div>
             </div>
+          </motion.aside>
 
-            <div className="mt-8 grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-              <GlassPanel id="progress" className="p-7">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Learning Analytics</p>
-                <h2 className="mt-3 text-[2.5rem] font-black leading-[1.06] text-white">
-                  Focus, time, and retention at a glance
-                </h2>
-                <p className="mt-4 max-w-3xl text-lg text-slate-300">
-                  The system tracks how consistently you learn, not just how often you open a course.
-                </p>
-                <AnalyticsChart
-                  data={weeklyLearningData}
-                  engagementMetric={engagementMetric}
-                  recallMetric={recallMetric}
+          <div
+            className="transition-[padding,margin] duration-200 xl:ml-[112px] xl:pl-[var(--sidebar-offset)] xl:pr-[324px]"
+            style={{ "--sidebar-offset": `${Math.max(sidebarWidth + SIDEBAR_GAP - MAIN_DASHBOARD_MARGIN, 0)}px` }}
+          >
+          <motion.div
+            variants={sectionVariants}
+            initial="hidden"
+            animate="show"
+            className="z-10 min-w-0 space-y-4"
+          >
+            <motion.section variants={cardVariants} id="home">
+              <Surface className="overflow-hidden p-6 sm:p-7">
+                <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[-0.02em] leading-[1.2] text-zinc-500">Operational View</p>
+                    <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-[-0.02em] leading-[1.15] text-white sm:text-[3.5rem]">
+                      Production-grade learning, tuned for deep work.
+                    </h1>
+                    <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-300">
+                      VisualMind now prioritizes active paths, revision risk, and next actions over decorative noise.
+                    </p>
+
+                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                      <StatPill label="Learning XP" value={<CountUpNumber value={xp} />} />
+                      <StatPill label="Current Streak" value={<CountUpNumber value={streak} suffix="d" />} />
+                      <StatPill label="Lessons Closed" value={<CountUpNumber value={completedLessonsCount} />} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] bg-gradient-to-br from-[#4facfe] via-[#3f78ff] to-[#6b46ff] p-5 text-white shadow-[0_20px_50px_rgba(79,172,254,0.2)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">Resume Path</p>
+                    <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] text-white sm:text-[2.8rem]">
+                      {resumeCourse ? `Resume ${resumeCourse.title}` : "Create your first path"}
+                    </h2>
+                    <p className="mt-3 text-sm leading-6 text-white/85">
+                      {resumeCourse
+                        ? `${resumeCourse.nextLessonTitle} is next. Stay inside the same path and protect recall momentum.`
+                        : "Generate a course in the AI Lab to unlock your active workspace."}
+                    </p>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">Progress</p>
+                        <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? `${resumeCourse.progress}%` : "0%"}</p>
+                      </div>
+                      <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">Next Lesson</p>
+                        <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? resumeCourse.nextLessonTitle : "Not started"}</p>
+                      </div>
+                      <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">Time Left</p>
+                        <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? resumeCourse.timeRemaining : "0 min"}</p>
+                      </div>
+                    </div>
+
+                    {resumeCourse ? (
+                      <>
+                        <div className="mt-5">
+                          <GlowBar value={resumeCourse.progress} trackClassName="bg-white/20" className="from-white via-[#9fe8ff] to-[#d5c4ff]" />
+                        </div>
+                        <Link
+                          href={`/courses/${resumeCourse.id}`}
+                          className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-950 transition-[transform,box-shadow,filter] duration-200 hover:scale-[1.02] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_24px_rgba(79,172,254,0.2),0_0_36px_rgba(107,70,255,0.18)]"
+                        >
+                          <PlayIcon className="h-4 w-4" />
+                          Resume
+                        </Link>
+                      </>
+                    ) : (
+                      <Link
+                        href="/ai-lab"
+                        className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-950 transition-[transform,box-shadow,filter] duration-200 hover:scale-[1.02] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_24px_rgba(79,172,254,0.2),0_0_36px_rgba(107,70,255,0.18)]"
+                      >
+                        <SparkIcon className="h-4 w-4" />
+                        Open AI Lab
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </Surface>
+            </motion.section>
+
+            <motion.section variants={cardVariants} id="courses">
+              <Surface className="p-6 sm:p-7">
+                <SectionKick
+                  label="Active Courses"
+                  title="Keep every live path visible."
+                  detail="Descriptions are stripped back so the next lesson, progress, and time cost stay instantly scannable."
                 />
-              </GlassPanel>
 
-              <GlassPanel id="tasks" className="p-7">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Daily Goals</p>
-                <h2 className="mt-3 text-[2.5rem] font-black leading-[1.06] text-white">Today’s active study plan</h2>
-                <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                  Treat this as your light operating system: a few small wins that keep the streak alive.
-                </p>
-
-                <div className="mt-6 space-y-3">
-                  {dailyGoals.map((goal, index) => (
-                    <GoalItem key={goal.id} goal={goal} onToggle={toggleGoal} index={index} />
-                  ))}
-                </div>
-
-                <div className="mt-6">
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="text-slate-300">Completion</span>
-                    <span className="font-bold text-cyan-200">{todayProgress}%</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-white/10">
-                    <motion.div
-                      animate={{ width: `${todayProgress}%` }}
-                      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                      className="h-3 rounded-full bg-gradient-to-r from-cyan-300 via-blue-500 to-violet-500"
-                    />
-                  </div>
-                </div>
-              </GlassPanel>
-            </div>
-
-            <div className="mt-8 grid gap-5 xl:grid-cols-[1.02fr_0.98fr]">
-              <GlassPanel id="activity" className="p-7">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Recent Activity</p>
-                <h2 className="mt-3 text-[2.5rem] font-black leading-[1.06] text-white">What moved recently</h2>
-                <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                  A quick timeline of lessons completed, quiz performance, and XP gained.
-                </p>
-
-                {recentActivities.length ? (
-                  <div className="mt-8 space-y-4">
-                    {recentActivities.map((activity, index) => (
-                      <ActivityRow key={activity.id} activity={activity} index={index} />
+                {visibleCourses.length ? (
+                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                    {visibleCourses.map((course, index) => (
+                      <CourseCard key={course.id} course={course} delay={index * 0.05} />
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-8 rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-slate-300">
-                    Activity starts appearing here as soon as you generate a course, open a lesson, or complete a quiz.
+                  <div className="mt-6 rounded-[24px] bg-[#111111] p-6">
+                    <p className="text-lg font-bold text-white">No active paths yet.</p>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
+                      Generate your first AI course and this workspace will fill with progress bars, next lessons, and recall signals.
+                    </p>
+                    <Link
+                      href="/ai-lab"
+                      className="mt-4 inline-flex rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                    >
+                      Generate a path
+                    </Link>
                   </div>
                 )}
-              </GlassPanel>
+              </Surface>
+            </motion.section>
 
-              <GlassPanel className="p-7">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#71dff0]">Leaderboard</p>
-                <h2 className="mt-3 text-[2.5rem] font-black leading-[1.06] text-white">Top learners this week</h2>
-                <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                  A little competition helps make daily progress feel more tangible and social.
-                </p>
+            <motion.section variants={cardVariants} id="analytics">
+              <Surface className="p-6 sm:p-7">
+                <SectionKick
+                  label="Analytics"
+                  title="Focus and retention in one pass."
+                  detail="Progress momentum stays bright. Risk signals stay obvious."
+                />
 
-                <div className="mt-8 space-y-3">
-                  {leaderboardData.map((item, index) => (
-                    <LeaderboardRow key={`${item.name}-${index}`} item={item} index={index} />
+                <div className="mt-6 grid gap-4 2xl:grid-cols-[1.05fr_0.95fr]">
+                  <LearningBars data={weeklyLearningData} />
+
+                  <div className="space-y-4">
+                    <Surface layer={3} className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Engagement Score</p>
+                          <p className="mt-2 text-3xl font-bold text-white">
+                            {engagementMetric ? <CountUpNumber value={engagementMetric.value} suffix="%" /> : "—"}
+                          </p>
+                        </div>
+                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${engagementMetric?.trend.badgeClass || "border-white/10 bg-white/[0.04] text-zinc-400"}`}>
+                          {engagementMetric ? `${engagementMetric.trend.arrow} ${engagementMetric.trend.emphasis}` : "Start a lesson"}
+                        </span>
+                      </div>
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <StatPill
+                          label="Focus Minutes"
+                          value={`${focusMinutes}m`}
+                          tone="text-zinc-100"
+                        />
+                        <StatPill
+                          label="Active Ratio"
+                          value={engagementMetric ? `${clampPercent(engagementMetric.activeRatio * 100)}%` : "0%"}
+                          tone="text-zinc-100"
+                        />
+                      </div>
+                    </Surface>
+
+                    <RecallWidget
+                      metric={recallMetric}
+                      resumeHref={resumeCourse ? `/courses/${resumeCourse.id}` : "/ai-lab"}
+                    />
+                  </div>
+                </div>
+              </Surface>
+            </motion.section>
+
+            <motion.section variants={cardVariants} id="activity">
+              <Surface className="p-6 sm:p-7">
+                <SectionKick
+                  label="Activity Feed"
+                  title="What moved most recently."
+                  detail="Repeated actions are collapsed into sprints so the feed stays useful under pressure."
+                />
+
+                {groupedActivities.length ? (
+                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                    {groupedActivities.map((item, index) => (
+                      <ActivityRow key={item.id} item={item} index={index} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-6 rounded-[24px] bg-[#111111] p-6 text-sm text-zinc-400">
+                    Activity appears here after you generate a course, open a lesson, or clear a quiz.
+                  </div>
+                )}
+              </Surface>
+            </motion.section>
+          </motion.div>
+
+          <motion.aside
+            variants={sectionVariants}
+            initial="hidden"
+            animate="show"
+            className="z-10 mt-4 space-y-4 xl:fixed xl:right-8 xl:top-4 xl:w-[300px]"
+            id="social"
+          >
+            <motion.section variants={cardVariants}>
+              <Surface className="bg-white/[0.05] p-5 backdrop-blur-[20px]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Daily Plan</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">{todayProgress}% Today</h2>
+                <p className="mt-2 text-sm text-zinc-400">Small wins, high carry-over.</p>
+                <div className="mt-4">
+                  <GlowBar value={todayProgress} />
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {dailyGoals.map((goal) => (
+                    <GoalRow key={goal.id} goal={goal} onToggle={toggleGoal} />
                   ))}
                 </div>
+              </Surface>
+            </motion.section>
 
-                <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
-                  <p className="text-sm font-semibold text-slate-400">Lessons completed</p>
-                  <p className="mt-2 text-3xl font-black text-white">
-                    <CountUpNumber value={completedLessonsCount} />
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">
-                    You’ve closed real lessons, not just browsed the catalog.
-                  </p>
+            <motion.section variants={cardVariants}>
+              <Surface className="bg-white/[0.05] p-5 backdrop-blur-[20px]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Social</p>
+                    <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">Leaderboard</h2>
+                  </div>
+                  <UsersIcon className="h-5 w-5 text-zinc-500" />
                 </div>
-              </GlassPanel>
-            </div>
-          </section>
+
+                <div className="mt-4 space-y-3">
+                  {leaderboardData.map((item, index) => (
+                    <SocialRow key={`${item.name}-${index}`} item={item} index={index} />
+                  ))}
+                </div>
+              </Surface>
+            </motion.section>
+
+            <motion.section variants={cardVariants}>
+              <Surface className="bg-white/[0.05] p-5 backdrop-blur-[20px]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">AI Workflow</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">Refine another concept.</h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Use the lab when you need a new learning path or a tighter concept breakdown.
+                </p>
+                <Link
+                  href="/ai-lab"
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                >
+                  <SparkIcon className="h-4 w-4" />
+                  Open AI Lab
+                </Link>
+              </Surface>
+            </motion.section>
+          </motion.aside>
+          </div>
         </div>
       </div>
     </main>

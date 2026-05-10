@@ -12,6 +12,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -26,6 +27,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
   background: #070a12;
   color: #f8fafc;
   font-family:
