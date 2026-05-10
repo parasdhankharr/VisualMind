@@ -46,6 +46,12 @@ const SIDEBAR_COLLAPSED_WIDTH = 96;
 const SIDEBAR_EXPANDED_WIDTH = 248;
 const SIDEBAR_GAP = 24;
 const MAIN_DASHBOARD_MARGIN = 112;
+const BRAND_GRADIENT = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)";
+const LABEL_CLASS = "text-[10px] font-semibold uppercase tracking-[0.1em]";
+const HEADING_CLASS = "font-extrabold tracking-[-0.03em]";
+const GLASS_CARD_CLASS = "border border-white/[0.05] backdrop-blur-[16px]";
+const PRIMARY_BUTTON_CLASS =
+  "inline-flex items-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-slate-950 transition-[transform,filter,box-shadow] duration-200 hover:brightness-110";
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value || 0)));
@@ -388,7 +394,7 @@ function Surface({ children, className = "", layer = 2 }) {
     <div
       className={`rounded-[24px] ${
         layer === 3 ? "bg-[#151515]" : "bg-[#111111]"
-      } shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${className}`}
+      } ${GLASS_CARD_CLASS} shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${className}`}
     >
       {children}
     </div>
@@ -399,8 +405,8 @@ function SectionKick({ label, title, detail, action }) {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{label}</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white sm:text-[2rem]">{title}</h2>
+        <p className={`${LABEL_CLASS} text-zinc-500`}>{label}</p>
+        <h2 className={`mt-2 text-2xl text-white sm:text-[2rem] ${HEADING_CLASS}`}>{title}</h2>
         {detail ? <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">{detail}</p> : null}
       </div>
       {action}
@@ -445,8 +451,11 @@ function GlowBar({ value, className = "", trackClassName = "" }) {
         initial={{ width: 0 }}
         animate={{ width: `${value}%` }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className={`h-full rounded-full bg-gradient-to-r from-[#4facfe] via-[#3d8bff] to-[#5b2cff] ${className}`}
-        style={{ filter: "drop-shadow(0 0 10px rgba(79, 172, 254, 0.7)) drop-shadow(0 0 22px rgba(91, 44, 255, 0.35))" }}
+        className={`h-full rounded-full ${className}`}
+        style={{
+          backgroundImage: BRAND_GRADIENT,
+          filter: "drop-shadow(0 0 10px rgba(79, 172, 254, 0.45))"
+        }}
       />
     </div>
   );
@@ -477,9 +486,9 @@ function SidebarItem({ item, expanded }) {
 
 function StatPill({ label, value, tone = "text-white" }) {
   return (
-    <div className="rounded-[12px] bg-[#1a1a1a] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</p>
-      <p className={`mt-2 text-lg font-bold ${tone}`}>{value}</p>
+    <div className="flex min-h-[104px] flex-col justify-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]">
+      <p className={`${LABEL_CLASS} text-zinc-500`}>{label}</p>
+      <p className={`mt-3 text-lg font-bold ${tone}`}>{value}</p>
     </div>
   );
 }
@@ -522,14 +531,14 @@ function TodayRing({ value, expanded }) {
         <defs>
           <linearGradient id="today-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#4facfe" />
-            <stop offset="100%" stopColor="#6b46ff" />
+            <stop offset="100%" stopColor="#00f2fe" />
           </linearGradient>
         </defs>
       </svg>
 
       <div className="relative flex flex-col items-center justify-center text-center">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">TODAY</span>
-        <span className={`font-bold tracking-[-0.05em] text-white ${expanded ? "text-[1.9rem]" : "text-base"}`}>
+        <span className={`${LABEL_CLASS} text-zinc-500`}>TODAY</span>
+        <span className={`text-white ${expanded ? "text-[1.9rem]" : "text-base"} ${HEADING_CLASS}`}>
           {value}%
         </span>
       </div>
@@ -543,15 +552,15 @@ function CourseCard({ course, delay = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)]"
+      className={`rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${GLASS_CARD_CLASS}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{course.category}</p>
-          <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">{course.title}</h3>
+          <p className={`${LABEL_CLASS} text-zinc-500`}>{course.category}</p>
+          <h3 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{course.title}</h3>
         </div>
-        <div className="rounded-[12px] bg-[#1a1a1a] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">XP</p>
+        <div className="rounded-[6px] bg-[#1a1a1a] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+          <p className={`${LABEL_CLASS} text-zinc-500`}>XP</p>
           <p className="mt-1 text-lg font-bold text-white">{course.earnedXp}</p>
         </div>
       </div>
@@ -561,37 +570,38 @@ function CourseCard({ course, delay = 0 }) {
           initial={{ width: 0 }}
           animate={{ width: `${course.progress}%` }}
           transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full rounded-full bg-gradient-to-r from-[#4facfe] to-[#00f2fe]"
+          className="h-full rounded-full"
+          style={{ backgroundImage: BRAND_GRADIENT }}
         />
       </div>
 
       <div className="mt-4 grid gap-3 rounded-[12px] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:grid-cols-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</p>
+          <p className={`${LABEL_CLASS} text-zinc-500`}>Progress</p>
           <p className="mt-2 text-sm font-semibold text-white">{course.progress}% complete</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Next Lesson</p>
+          <p className={`${LABEL_CLASS} text-zinc-500`}>Next Lesson</p>
           <p className="mt-2 text-sm font-semibold text-white">{course.nextLessonTitle}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Time Remaining</p>
+          <p className={`${LABEL_CLASS} text-zinc-500`}>Time Remaining</p>
           <p className="mt-2 text-sm font-semibold text-white">{course.timeRemaining}</p>
         </div>
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+          <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
             {course.lessons?.length || 0} lessons
           </span>
-          <span className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+          <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
             {course.duration}
           </span>
         </div>
         <Link
           href={`/courses/${course.id}`}
-          className="inline-flex items-center gap-2 rounded-full bg-[#1a1a1a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#222222]"
+          className="inline-flex items-center gap-2 rounded-[12px] bg-[#1a1a1a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#222222]"
         >
           <PlayIcon className="h-4 w-4" />
           Open Path
@@ -605,11 +615,11 @@ function LearningBars({ data }) {
   const maxValue = Math.max(...(data.length ? data.map((item) => item.minutes) : [1]), 1);
 
   return (
-    <div className="rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)]">
+    <div className={`rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] ${GLASS_CARD_CLASS}`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Focus Time</p>
-          <p className="mt-2 text-xl font-bold text-white">Weekly learning load</p>
+          <p className={`${LABEL_CLASS} text-zinc-500`}>Focus Time</p>
+          <p className={`mt-2 text-xl text-white ${HEADING_CLASS}`}>Weekly learning load</p>
         </div>
         <p className="text-sm text-zinc-400">Last 7 days</p>
       </div>
@@ -618,9 +628,9 @@ function LearningBars({ data }) {
         <div className="mt-6 flex h-44 items-end gap-3">
           {data.map((item) => (
             <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
-              <div className="flex h-full w-full items-end rounded-t-[20px] bg-black/30">
+              <div className="flex h-full w-full items-end rounded-t-[12px] bg-black/30">
                 <div
-                  className="w-full rounded-t-[20px]"
+                  className="w-full rounded-t-[12px]"
                   style={{
                     height: `${Math.max((item.minutes / maxValue) * 100, item.minutes ? 12 : 4)}%`,
                     background:
@@ -670,26 +680,30 @@ function Sparkline({ values, tone = "steady" }) {
     <svg viewBox={`0 0 ${width} ${height}`} className="h-24 w-full" role="img" aria-label="Recall strength trend">
       <defs>
         <linearGradient id={`recall-fill-${tone}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(0,229,255,0.34)" />
-          <stop offset="100%" stopColor="rgba(0,229,255,0)" />
+          <stop offset="0%" stopColor="rgba(79,172,254,0.34)" />
+          <stop offset="100%" stopColor="rgba(0,242,254,0)" />
+        </linearGradient>
+        <linearGradient id={`recall-line-${tone}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#4facfe" />
+          <stop offset="100%" stopColor="#00f2fe" />
         </linearGradient>
       </defs>
       <path d={areaPath} fill={`url(#recall-fill-${tone})`} />
       <polyline
         points={pointString}
         fill="none"
-        stroke="#00E5FF"
+        stroke={`url(#recall-line-${tone})`}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ filter: "drop-shadow(0 0 5px rgba(0, 229, 255, 0.4))" }}
+        style={{ filter: "drop-shadow(0 0 5px rgba(79, 172, 254, 0.35))" }}
       />
       <circle
         cx={lastPoint.x}
         cy={lastPoint.y}
         r="4"
-        fill="#00E5FF"
-        style={{ filter: "drop-shadow(0 0 5px rgba(0, 229, 255, 0.4))" }}
+        fill="#00f2fe"
+        style={{ filter: "drop-shadow(0 0 5px rgba(79, 172, 254, 0.35))" }}
       />
     </svg>
   );
@@ -701,10 +715,10 @@ function RecallWidget({ metric, resumeHref }) {
       <Surface layer={3} className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Recall Strength</p>
-            <p className="mt-2 text-xl font-bold text-white">Trend locked</p>
+            <p className={`${LABEL_CLASS} text-zinc-500`}>Recall Strength</p>
+            <p className={`mt-2 text-xl text-white ${HEADING_CLASS}`}>Trend locked</p>
           </div>
-          <span className="rounded-full bg-[#1a1a1a] px-3 py-1 text-xs font-medium text-zinc-400">
+          <span className="rounded-[6px] bg-[#1a1a1a] px-3 py-1 text-xs font-medium text-zinc-400">
             No data yet
           </span>
         </div>
@@ -717,7 +731,8 @@ function RecallWidget({ metric, resumeHref }) {
 
         <Link
           href={resumeHref}
-          className="mt-5 inline-flex rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+          className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
+          style={{ backgroundImage: BRAND_GRADIENT }}
         >
           Complete your first lesson to unlock trends
         </Link>
@@ -732,10 +747,10 @@ function RecallWidget({ metric, resumeHref }) {
     <Surface layer={3} className="p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Recall Strength</p>
-          <p className="mt-2 text-3xl font-bold text-white">{metric.value}%</p>
+          <p className={`${LABEL_CLASS} text-zinc-500`}>Recall Strength</p>
+          <p className={`mt-2 text-3xl text-white ${HEADING_CLASS}`}>{metric.value}%</p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${metric.trend.badgeClass}`}>
+        <span className={`rounded-[6px] px-3 py-1 text-xs font-semibold ${metric.trend.badgeClass}`}>
           {metric.trend.arrow} {riskCopy}
         </span>
       </div>
@@ -780,18 +795,18 @@ function ActivityRow({ item, index }) {
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="rounded-[24px] bg-[#111111] p-4"
+      className={`rounded-[24px] bg-[#111111] p-4 ${GLASS_CARD_CLASS}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-white">{item.title}</p>
           <p className="mt-1 text-sm text-zinc-300">{item.subtitle}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${toneClasses[item.type] || toneClasses.learning}`}>
+        <span className={`shrink-0 rounded-[6px] px-3 py-1 text-xs font-semibold ${toneClasses[item.type] || toneClasses.learning}`}>
           {item.xp > 0 ? `+${item.xp} XP` : item.type}
         </span>
       </div>
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+      <p className={`mt-3 ${LABEL_CLASS} text-zinc-500`}>
         {getRelativeTimeLabel(item.timestamp)}
       </p>
     </motion.div>
@@ -803,12 +818,12 @@ function GoalRow({ goal, onToggle }) {
     <button
       type="button"
       onClick={() => onToggle(goal.id)}
-      className={`flex w-full items-start gap-3 rounded-[12px] p-4 text-left transition ${
+      className={`flex w-full items-start gap-3 rounded-[12px] border border-white/[0.05] p-4 text-left backdrop-blur-[16px] transition ${
         goal.done ? "bg-white/[0.08]" : "bg-[#1a1a1a]"
       }`}
     >
       <span
-        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${
+        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border text-xs font-bold ${
           goal.done ? "border-[#00f2fe] bg-[#00f2fe] text-black" : "border-white/12 bg-black text-transparent"
         }`}
       >
@@ -824,9 +839,9 @@ function GoalRow({ goal, onToggle }) {
 
 function SocialRow({ item, index }) {
   return (
-    <div className="flex items-center justify-between rounded-[12px] bg-white/[0.05] px-4 py-3 backdrop-blur-[20px]">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-xs font-semibold text-zinc-300">
+    <div className="flex items-center justify-between rounded-[12px] border border-white/[0.05] bg-white/[0.05] px-4 py-3 backdrop-blur-[16px]">
+      <div className="flex items-center gap-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-black/35 text-xs font-semibold text-zinc-300">
           {index + 1}
         </div>
         <div>
@@ -834,7 +849,7 @@ function SocialRow({ item, index }) {
           <p className="text-xs text-zinc-500">{item.streak} day streak</p>
         </div>
       </div>
-      <p className="text-sm font-semibold text-zinc-200">{item.xp} XP</p>
+      <p className="w-16 text-right text-sm font-semibold text-zinc-200">{item.xp} XP</p>
     </div>
   );
 }
@@ -1023,14 +1038,14 @@ export function Dashboard() {
             onMouseLeave={() => setSidebarExpanded(false)}
             onFocusCapture={() => setSidebarExpanded(true)}
             onBlurCapture={() => setSidebarExpanded(false)}
-            className={`z-30 w-full overflow-hidden rounded-[24px] bg-white/[0.05] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[20px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-4 xl:h-[calc(100vh-2rem)] ${
+            className={`z-30 w-full overflow-hidden rounded-[24px] border border-white/[0.05] bg-white/[0.05] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[16px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-4 xl:h-[calc(100vh-2rem)] ${
               sidebarExpanded ? "xl:w-[248px]" : "xl:w-[96px]"
             }`}
             style={{ zIndex: 40 }}
           >
             <div className="flex h-full flex-col">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#1a1a1a] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#1a1a1a] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <BoltIcon />
                 </div>
                 <div
@@ -1038,8 +1053,8 @@ export function Dashboard() {
                     sidebarExpanded ? "xl:max-w-[130px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
                   }`}
                 >
-                  <p className="text-lg font-bold tracking-[-0.03em] text-white">VisualMind</p>
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Learning OS</p>
+                  <p className={`text-lg text-white ${HEADING_CLASS}`}>VisualMind</p>
+                  <p className={`${LABEL_CLASS} text-zinc-500`}>Learning OS</p>
                 </div>
               </div>
 
@@ -1049,7 +1064,7 @@ export function Dashboard() {
                 ))}
               </nav>
 
-              <div className="mt-6 flex flex-col items-center rounded-[12px] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+              <div className="mt-6 flex flex-col items-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
                 <TodayRing value={todayProgress} expanded={sidebarExpanded} />
                 <p
                   className={`mt-3 overflow-hidden text-center text-xs text-zinc-400 transition-all duration-200 ${
@@ -1062,7 +1077,8 @@ export function Dashboard() {
 
               <Link
                 href="/ai-lab"
-                className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                className={`mt-4 justify-center ${PRIMARY_BUTTON_CLASS}`}
+                style={{ backgroundImage: BRAND_GRADIENT }}
               >
                 <SparkIcon className="h-4 w-4" />
                 <span
@@ -1075,8 +1091,8 @@ export function Dashboard() {
               </Link>
 
               <div className="mt-auto pt-6">
-                <div className="flex items-center gap-3 rounded-[12px] bg-[#1a1a1a] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-sm font-semibold text-white">
+                <div className="flex items-center gap-3 rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-black text-sm font-semibold text-white">
                     N
                   </div>
                   <div
@@ -1106,8 +1122,8 @@ export function Dashboard() {
               <Surface className="overflow-hidden p-6 sm:p-7">
                 <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[-0.02em] leading-[1.2] text-zinc-500">Operational View</p>
-                    <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-[-0.02em] leading-[1.15] text-white sm:text-[3.5rem]">
+                    <p className={`${LABEL_CLASS} leading-[1.2] text-zinc-500`}>Operational View</p>
+                    <h1 className={`mt-3 max-w-3xl text-4xl leading-[1.15] text-white sm:text-[3.5rem] ${HEADING_CLASS}`}>
                       Production-grade learning, tuned for deep work.
                     </h1>
                     <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-300">
@@ -1121,9 +1137,15 @@ export function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] bg-gradient-to-br from-[#4facfe] via-[#3f78ff] to-[#6b46ff] p-5 text-white shadow-[0_20px_50px_rgba(79,172,254,0.2)]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">Resume Path</p>
-                    <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] text-white sm:text-[2.8rem]">
+                  <div
+                    className="rounded-[24px] border border-white/[0.08] p-5 text-white shadow-[0_20px_50px_rgba(79,172,254,0.2)]"
+                    style={{
+                      backgroundImage: BRAND_GRADIENT,
+                      filter: "drop-shadow(0 0 8px rgba(79, 172, 254, 0.3))"
+                    }}
+                  >
+                    <p className={`${LABEL_CLASS} text-white/70`}>Resume Path</p>
+                    <h2 className={`mt-3 text-3xl text-white sm:text-[2.8rem] ${HEADING_CLASS}`}>
                       {resumeCourse ? `Resume ${resumeCourse.title}` : "Create your first path"}
                     </h2>
                     <p className="mt-3 text-sm leading-6 text-white/85">
@@ -1134,15 +1156,15 @@ export function Dashboard() {
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">Progress</p>
+                        <p className={`${LABEL_CLASS} text-white/65`}>Progress</p>
                         <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? `${resumeCourse.progress}%` : "0%"}</p>
                       </div>
                       <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">Next Lesson</p>
+                        <p className={`${LABEL_CLASS} text-white/65`}>Next Lesson</p>
                         <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? resumeCourse.nextLessonTitle : "Not started"}</p>
                       </div>
                       <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">Time Left</p>
+                        <p className={`${LABEL_CLASS} text-white/65`}>Time Left</p>
                         <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? resumeCourse.timeRemaining : "0 min"}</p>
                       </div>
                     </div>
@@ -1150,11 +1172,15 @@ export function Dashboard() {
                     {resumeCourse ? (
                       <>
                         <div className="mt-5">
-                          <GlowBar value={resumeCourse.progress} trackClassName="bg-white/20" className="from-white via-[#9fe8ff] to-[#d5c4ff]" />
+                          <GlowBar value={resumeCourse.progress} trackClassName="bg-white/20" />
                         </div>
                         <Link
                           href={`/courses/${resumeCourse.id}`}
-                          className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-950 transition-[transform,box-shadow,filter] duration-200 hover:scale-[1.02] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_24px_rgba(79,172,254,0.2),0_0_36px_rgba(107,70,255,0.18)]"
+                          className={`${PRIMARY_BUTTON_CLASS} mt-5 px-5 py-3`}
+                          style={{
+                            backgroundImage: BRAND_GRADIENT,
+                            boxShadow: "0 0 24px rgba(79,172,254,0.2)"
+                          }}
                         >
                           <PlayIcon className="h-4 w-4" />
                           Resume
@@ -1163,7 +1189,11 @@ export function Dashboard() {
                     ) : (
                       <Link
                         href="/ai-lab"
-                        className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-950 transition-[transform,box-shadow,filter] duration-200 hover:scale-[1.02] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_24px_rgba(79,172,254,0.2),0_0_36px_rgba(107,70,255,0.18)]"
+                        className={`${PRIMARY_BUTTON_CLASS} mt-5 px-5 py-3`}
+                        style={{
+                          backgroundImage: BRAND_GRADIENT,
+                          boxShadow: "0 0 24px rgba(79,172,254,0.2)"
+                        }}
                       >
                         <SparkIcon className="h-4 w-4" />
                         Open AI Lab
@@ -1189,14 +1219,15 @@ export function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-6 rounded-[24px] bg-[#111111] p-6">
+                  <div className={`mt-6 rounded-[24px] bg-[#111111] p-6 ${GLASS_CARD_CLASS}`}>
                     <p className="text-lg font-bold text-white">No active paths yet.</p>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
                       Generate your first AI course and this workspace will fill with progress bars, next lessons, and recall signals.
                     </p>
                     <Link
                       href="/ai-lab"
-                      className="mt-4 inline-flex rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                      className={`mt-4 ${PRIMARY_BUTTON_CLASS}`}
+                      style={{ backgroundImage: BRAND_GRADIENT }}
                     >
                       Generate a path
                     </Link>
@@ -1220,12 +1251,12 @@ export function Dashboard() {
                     <Surface layer={3} className="p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Engagement Score</p>
-                          <p className="mt-2 text-3xl font-bold text-white">
+                          <p className={`${LABEL_CLASS} text-zinc-500`}>Engagement Score</p>
+                          <p className={`mt-2 text-3xl text-white ${HEADING_CLASS}`}>
                             {engagementMetric ? <CountUpNumber value={engagementMetric.value} suffix="%" /> : "—"}
                           </p>
                         </div>
-                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${engagementMetric?.trend.badgeClass || "border-white/10 bg-white/[0.04] text-zinc-400"}`}>
+                        <span className={`rounded-[6px] border px-3 py-1 text-xs font-semibold ${engagementMetric?.trend.badgeClass || "border-white/10 bg-white/[0.04] text-zinc-400"}`}>
                           {engagementMetric ? `${engagementMetric.trend.arrow} ${engagementMetric.trend.emphasis}` : "Start a lesson"}
                         </span>
                       </div>
@@ -1267,7 +1298,7 @@ export function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-6 rounded-[24px] bg-[#111111] p-6 text-sm text-zinc-400">
+                  <div className={`mt-6 rounded-[24px] bg-[#111111] p-6 text-sm text-zinc-400 ${GLASS_CARD_CLASS}`}>
                     Activity appears here after you generate a course, open a lesson, or clear a quiz.
                   </div>
                 )}
@@ -1283,9 +1314,9 @@ export function Dashboard() {
             id="social"
           >
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-5 backdrop-blur-[20px]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Daily Plan</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">{todayProgress}% Today</h2>
+              <Surface className="bg-white/[0.05] p-5">
+                <p className={`${LABEL_CLASS} text-zinc-500`}>Daily Plan</p>
+                <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{todayProgress}% Today</h2>
                 <p className="mt-2 text-sm text-zinc-400">Small wins, high carry-over.</p>
                 <div className="mt-4">
                   <GlowBar value={todayProgress} />
@@ -1300,11 +1331,11 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-5 backdrop-blur-[20px]">
+              <Surface className="bg-white/[0.05] p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Social</p>
-                    <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">Leaderboard</h2>
+                    <p className={`${LABEL_CLASS} text-zinc-500`}>Social</p>
+                    <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>Leaderboard</h2>
                   </div>
                   <UsersIcon className="h-5 w-5 text-zinc-500" />
                 </div>
@@ -1318,15 +1349,16 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-5 backdrop-blur-[20px]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">AI Workflow</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white">Refine another concept.</h2>
+              <Surface className="bg-white/[0.05] p-5">
+                <p className={`${LABEL_CLASS} text-zinc-500`}>AI Workflow</p>
+                <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>Refine another concept.</h2>
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
                   Use the lab when you need a new learning path or a tighter concept breakdown.
                 </p>
                 <Link
                   href="/ai-lab"
-                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4facfe] to-[#6b46ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                  className={`mt-4 ${PRIMARY_BUTTON_CLASS}`}
+                  style={{ backgroundImage: BRAND_GRADIENT }}
                 >
                   <SparkIcon className="h-4 w-4" />
                   Open AI Lab
