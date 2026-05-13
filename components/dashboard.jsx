@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { leaderboard } from "@/data/courses";
+import { getRankMeta } from "@/data/ranks";
+import { formatStreakLabel, getMomentumSnapshot } from "@/data/streaks";
 import { getRelativeTimeLabel } from "@/lib/learning";
 import { useLearningStore } from "@/store/use-learning-store";
 
@@ -53,18 +55,6 @@ const HEADING_CLASS = "font-extrabold tracking-[-0.03em]";
 const GLASS_CARD_CLASS = "border border-white/[0.05] backdrop-blur-[16px]";
 const PRIMARY_BUTTON_CLASS =
   "inline-flex items-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-slate-950 transition-[transform,filter,box-shadow] duration-200 hover:brightness-110";
-const RANK_PROGRESSION = [
-  { title: "Initiate", minXp: 0 },
-  { title: "Seeker", minXp: 400 },
-  { title: "Catalyst", minXp: 900 },
-  { title: "Vector", minXp: 1500 },
-  { title: "Ascendant", minXp: 2200 },
-  { title: "Luminary", minXp: 3000 },
-  { title: "Nexus", minXp: 3900 },
-  { title: "Vanguard", minXp: 4900 },
-  { title: "Zenith", minXp: 6100 },
-  { title: "Overmind", minXp: 7600 }
-];
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value || 0)));
@@ -98,32 +88,6 @@ function startOfDay(timestamp = Date.now()) {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
-}
-
-function getRankMeta(xp) {
-  const safeXp = Math.max(0, Number(xp) || 0);
-  let currentRank = RANK_PROGRESSION[0];
-  let currentIndex = 0;
-
-  RANK_PROGRESSION.forEach((rank, index) => {
-    if (safeXp >= rank.minXp) {
-      currentRank = rank;
-      currentIndex = index;
-    }
-  });
-
-  const nextRank = RANK_PROGRESSION[currentIndex + 1] || null;
-  const progress = nextRank
-    ? clampPercent(((safeXp - currentRank.minXp) / Math.max(nextRank.minXp - currentRank.minXp, 1)) * 100)
-    : 100;
-
-  return {
-    ...currentRank,
-    index: currentIndex + 1,
-    nextRank,
-    progress,
-    xpToNext: nextRank ? Math.max(0, nextRank.minXp - safeXp) : 0
-  };
 }
 
 function buildWeeklyXpMeta(activities) {
@@ -606,6 +570,42 @@ function StatPill({
   );
 }
 
+function MomentumStatPill({ snapshot }) {
+  const nextMilestoneCopy = snapshot.nextMilestone
+    ? `${snapshot.daysToNext} ${snapshot.daysToNext === 1 ? "day" : "days"} to ${snapshot.nextMilestone.title}`
+    : "Eternal threshold sustained";
+
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative flex min-h-[112px] flex-col justify-center overflow-hidden rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]"
+    >
+      <motion.div
+        animate={{ opacity: snapshot.currentStreak > 0 ? [0.35, 0.58, 0.35] : [0.18, 0.28, 0.18] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.12),transparent_42%)]"
+      />
+
+      <div className="relative">
+        <p className={`${LABEL_CLASS} text-zinc-500`}>Current Streak</p>
+        <p className={`mt-3 text-lg font-bold leading-7 text-white ${HEADING_CLASS}`}>{snapshot.currentTitle}</p>
+        <div className="mt-2 text-sm leading-6 text-zinc-400">
+          <span className="font-semibold text-white">{formatStreakLabel(snapshot.currentStreak)}</span>
+          <span className="text-zinc-600"> / </span>
+          <span className="text-cyan-100">{snapshot.statusLabel}</span>
+        </div>
+
+        <div className="mt-4">
+          <GlowBar value={snapshot.progress} trackClassName="bg-black/35" />
+        </div>
+
+        <p className="mt-3 text-xs font-medium text-zinc-500">{nextMilestoneCopy}</p>
+      </div>
+    </motion.div>
+  );
+}
+
 function TodayRing({ value, expanded }) {
   const size = expanded ? 120 : 60;
   const strokeWidth = 6;
@@ -952,7 +952,7 @@ function GoalRow({ goal, onToggle }) {
 
 function PersonalProgressCard({ summary }) {
   const movement = getMovementMeta(summary.movement);
-  const nextRankCopy = summary.nextRankTitle ? `${formatNumber(summary.xpToNext)} XP to ${summary.nextRankTitle}` : "Top tier secured";
+  const nextRankCopy = summary.nextRankTitle ? `${formatNumber(summary.xpToNext)} XP to ${summary.nextRankTitle}` : "Overmind tier secured";
 
   return (
     <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
@@ -1010,7 +1010,7 @@ function PersonalProgressCard({ summary }) {
 
 function SocialRow({ item, index }) {
   const movement = getMovementMeta(item.movement);
-  const progressLabel = item.nextRankTitle ? `${formatNumber(item.xpToNext)} XP to ${item.nextRankTitle}` : "Top tier secured";
+  const progressLabel = item.nextRankTitle ? `${formatNumber(item.xpToNext)} XP to ${item.nextRankTitle}` : "Overmind tier secured";
 
   return (
     <motion.div
@@ -1099,6 +1099,8 @@ export function Dashboard() {
   const {
     xp,
     streak,
+    longestStreak,
+    activeDays,
     generatedCourses,
     courseProgress,
     activities,
@@ -1111,6 +1113,7 @@ export function Dashboard() {
   const safeGeneratedCourses = Array.isArray(generatedCourses) ? generatedCourses.filter(Boolean) : [];
   const safeCourseProgress = courseProgress && typeof courseProgress === "object" ? courseProgress : {};
   const safeActivities = Array.isArray(activities) ? activities.filter(Boolean) : [];
+  const safeActiveDays = Array.isArray(activeDays) ? activeDays.filter(Boolean) : [];
   const safeLessonSessions = Array.isArray(lessonSessions) ? lessonSessions.filter(Boolean) : [];
   const safeQuizAttempts = Array.isArray(quizAttempts) ? quizAttempts.filter(Boolean) : [];
   const safeCompletedCourses = completedCourses && typeof completedCourses === "object" ? completedCourses : {};
@@ -1236,6 +1239,14 @@ export function Dashboard() {
   const currentRank = useMemo(() => {
     return getRankMeta(xp);
   }, [xp]);
+
+  const momentumSnapshot = useMemo(() => {
+    return getMomentumSnapshot({
+      activeDays: safeActiveDays,
+      streak,
+      longestStreak
+    });
+  }, [longestStreak, safeActiveDays, streak]);
 
   const groupedActivities = useMemo(() => {
     return groupActivities(safeActivities);
@@ -1446,7 +1457,13 @@ export function Dashboard() {
                             : "Overmind tier secured"
                         }
                       />
-                      <StatPill label="Current Streak" value={<CountUpNumber value={streak} suffix="d" />} />
+                      <Link
+                        href="/momentum-path"
+                        aria-label="View momentum path"
+                        className="block rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+                      >
+                        <MomentumStatPill snapshot={momentumSnapshot} />
+                      </Link>
                       <StatPill label="Lessons Closed" value={<CountUpNumber value={completedLessonsCount} />} />
                     </div>
                   </div>

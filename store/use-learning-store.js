@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { buildSyntheticActiveDays, getMomentumSnapshot, registerActivityDay } from "@/data/streaks";
 
 function createEmptyCourseProgress() {
   return {
@@ -67,6 +68,8 @@ export const useLearningStore = create(
       completedLessons: {},
       xp: 0,
       streak: 0,
+      longestStreak: 0,
+      activeDays: [],
       generatedCourses: [],
       activities: [],
       courseProgress: {},
@@ -99,19 +102,38 @@ export const useLearningStore = create(
         }));
       },
       addActivity: ({ title, subtitle = "", xp = 0, type = "learning", timestamp = Date.now() }) => {
-        set((state) => ({
-          activities: [
+        set((state) => {
+          const fallbackDays =
+            Array.isArray(state.activeDays) && state.activeDays.length
+              ? state.activeDays
+              : buildSyntheticActiveDays(state.streak, timestamp);
+          const nextActiveDays = registerActivityDay(fallbackDays, timestamp);
+          const momentum = getMomentumSnapshot(
             {
-              id: `${type}-${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
-              title,
-              subtitle,
-              xp,
-              type,
-              timestamp
+              activeDays: nextActiveDays,
+              streak: state.streak,
+              longestStreak: state.longestStreak
             },
-            ...state.activities
-          ].slice(0, 20)
-        }));
+            timestamp
+          );
+
+          return {
+            activities: [
+              {
+                id: `${type}-${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+                title,
+                subtitle,
+                xp,
+                type,
+                timestamp
+              },
+              ...state.activities
+            ].slice(0, 20),
+            activeDays: nextActiveDays,
+            streak: momentum.currentStreak,
+            longestStreak: momentum.longestStreak
+          };
+        });
       },
       addGeneratedCourse: (course) => {
         set((state) => ({
@@ -421,18 +443,35 @@ export const useLearningStore = create(
     }),
     {
       name: "visualmind-learning-store",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState) => {
         const state = persistedState && typeof persistedState === "object" ? persistedState : {};
+        const activityList = Array.isArray(state.activities) ? state.activities.filter(Boolean) : [];
+        const storedActiveDays = Array.isArray(state.activeDays) ? state.activeDays.filter(Boolean) : [];
+        const inferredActiveDays =
+          storedActiveDays.length
+            ? storedActiveDays
+            : activityList.length
+              ? activityList.map((activity) => activity.timestamp)
+              : buildSyntheticActiveDays(state.streak);
+        const momentum = getMomentumSnapshot(
+          {
+            activeDays: inferredActiveDays,
+            streak: state.streak,
+            longestStreak: state.longestStreak
+          }
+        );
 
         return {
           ...state,
           completedLessons: state.completedLessons && typeof state.completedLessons === "object" ? state.completedLessons : {},
           xp: typeof state.xp === "number" ? state.xp : 0,
-          streak: typeof state.streak === "number" ? state.streak : 0,
+          streak: momentum.currentStreak,
+          longestStreak: momentum.longestStreak,
+          activeDays: momentum.activeDays,
           generatedCourses: Array.isArray(state.generatedCourses) ? state.generatedCourses.filter(Boolean) : [],
-          activities: Array.isArray(state.activities) ? state.activities.filter(Boolean) : [],
+          activities: activityList,
           courseProgress: state.courseProgress && typeof state.courseProgress === "object" ? state.courseProgress : {},
           completedCourses: state.completedCourses && typeof state.completedCourses === "object" ? state.completedCourses : {},
           lastOpenedCourseId: typeof state.lastOpenedCourseId === "string" ? state.lastOpenedCourseId : "",

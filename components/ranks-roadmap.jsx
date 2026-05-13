@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { leaderboard } from "@/data/courses";
-import { rankRoadmap } from "@/data/ranks";
+import { getRankMeta, rankRoadmap } from "@/data/ranks";
 import { useLearningStore } from "@/store/use-learning-store";
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)";
@@ -51,32 +51,6 @@ function buildWeeklyXpMeta(activities) {
   );
 }
 
-function getRankMeta(xp) {
-  const safeXp = Math.max(0, Number(xp) || 0);
-  let currentRank = rankRoadmap[0];
-  let currentIndex = 0;
-
-  rankRoadmap.forEach((rank, index) => {
-    if (safeXp >= rank.minXp) {
-      currentRank = rank;
-      currentIndex = index;
-    }
-  });
-
-  const nextRank = rankRoadmap[currentIndex + 1] || null;
-  const progress = nextRank
-    ? clampPercent(((safeXp - currentRank.minXp) / Math.max(nextRank.minXp - currentRank.minXp, 1)) * 100)
-    : 100;
-
-  return {
-    ...currentRank,
-    index: currentIndex + 1,
-    nextRank,
-    progress,
-    xpToNext: nextRank ? Math.max(0, nextRank.minXp - safeXp) : 0
-  };
-}
-
 function GlowBar({ value, trackClassName = "" }) {
   return (
     <div className={`h-2 overflow-hidden rounded-full bg-black/25 ${trackClassName}`}>
@@ -106,20 +80,40 @@ function RoadmapStat({ label, value, detail, strong = false }) {
 
 function RankMilestone({ item, index }) {
   const isLeft = index % 2 === 0;
+  const isElite = item.tone === "elite" || item.tone === "legendary";
+  const isLegendary = item.tone === "legendary";
   const stateClassName = item.isCurrent
-    ? "border-cyan-400/20 bg-cyan-500/[0.08] shadow-[0_0_26px_rgba(0,242,254,0.08)]"
+    ? isLegendary
+      ? "border-cyan-300/25 bg-cyan-500/[0.09] shadow-[0_0_34px_rgba(0,242,254,0.1)]"
+      : isElite
+        ? "border-cyan-400/22 bg-cyan-500/[0.085] shadow-[0_0_30px_rgba(0,242,254,0.09)]"
+        : "border-cyan-400/20 bg-cyan-500/[0.08] shadow-[0_0_26px_rgba(0,242,254,0.08)]"
     : item.isUnlocked
-      ? "border-white/[0.08] bg-white/[0.055]"
-      : "border-white/[0.05] bg-white/[0.03] opacity-60";
+      ? isElite
+        ? "border-white/[0.09] bg-white/[0.06] shadow-[0_0_22px_rgba(255,255,255,0.02)]"
+        : "border-white/[0.08] bg-white/[0.055]"
+      : isLegendary
+        ? "border-white/[0.07] bg-white/[0.035] opacity-72"
+        : isElite
+          ? "border-white/[0.06] bg-white/[0.032] opacity-68"
+          : "border-white/[0.05] bg-white/[0.03] opacity-60";
   const badgeClassName = item.isCurrent
-    ? "border-cyan-400/20 bg-cyan-500/[0.1] text-cyan-100"
+    ? isLegendary
+      ? "border-cyan-300/25 bg-cyan-500/[0.12] text-cyan-50"
+      : "border-cyan-400/20 bg-cyan-500/[0.1] text-cyan-100"
     : item.isUnlocked
-      ? "border-white/[0.08] bg-white/[0.06] text-zinc-200"
+      ? isElite
+        ? "border-white/[0.09] bg-white/[0.075] text-white"
+        : "border-white/[0.08] bg-white/[0.06] text-zinc-200"
       : "border-white/[0.06] bg-black/20 text-zinc-500";
   const dotClassName = item.isCurrent
-    ? "border-cyan-300/50 bg-cyan-300 shadow-[0_0_24px_rgba(0,242,254,0.4)]"
+    ? isLegendary
+      ? "border-cyan-200/60 bg-cyan-200 shadow-[0_0_28px_rgba(0,242,254,0.45)]"
+      : "border-cyan-300/50 bg-cyan-300 shadow-[0_0_24px_rgba(0,242,254,0.4)]"
     : item.isUnlocked
-      ? "border-cyan-400/20 bg-cyan-400/70 shadow-[0_0_16px_rgba(0,242,254,0.22)]"
+      ? isElite
+        ? "border-cyan-400/24 bg-cyan-400/78 shadow-[0_0_18px_rgba(0,242,254,0.26)]"
+        : "border-cyan-400/20 bg-cyan-400/70 shadow-[0_0_16px_rgba(0,242,254,0.22)]"
       : "border-white/[0.08] bg-[#1b1b1b]";
   const statusLabel = item.isCurrent ? "Current" : item.isUnlocked ? "Unlocked" : "Locked";
 
@@ -129,7 +123,7 @@ function RankMilestone({ item, index }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.25 }}
       transition={{ duration: 0.55, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
-      className="relative"
+      className={`relative ${isLegendary ? "pt-10 md:pt-14" : isElite ? "pt-4 md:pt-8" : ""}`}
     >
       <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)] md:items-center">
         <div className={`${isLeft ? "md:col-start-1" : "md:col-start-3"} pl-14 md:pl-0 ${isLeft ? "md:pr-8" : "md:pl-8"}`}>
@@ -144,7 +138,11 @@ function RankMilestone({ item, index }) {
                   opacity: [0.55, 0.9, 0.55]
                 }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.14),transparent_44%)]"
+                className={`pointer-events-none absolute inset-0 ${
+                  isLegendary
+                    ? "bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.18),transparent_46%)]"
+                    : "bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.14),transparent_44%)]"
+                }`}
               />
             ) : null}
 
@@ -158,6 +156,11 @@ function RankMilestone({ item, index }) {
 
               <h3 className={`mt-5 text-3xl text-white ${HEADING_CLASS}`}>{item.title}</h3>
               <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-300">"{item.description}"</p>
+              {isElite ? (
+                <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+                  {isLegendary ? "Final mastery threshold" : "Elite mastery threshold"}
+                </p>
+              ) : null}
             </div>
           </motion.article>
         </div>
@@ -292,8 +295,25 @@ export function RanksRoadmap() {
                 <p className={`mt-8 text-5xl text-white sm:text-[4.4rem] ${HEADING_CLASS}`}>{formatNumber(xp)} XP</p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                  <RoadmapStat label="Next Rank" value={progressCopy} detail={currentRank.nextRank ? `${currentRank.title} to ${currentRank.nextRank.title}` : "Highest cognitive tier reached"} strong />
-                  <RoadmapStat label="Progress" value={`${currentRank.progress}%`} detail="Measured across the current rank band." />
+                  <RoadmapStat
+                    label="Next Rank"
+                    value={progressCopy}
+                    detail={
+                      currentRank.nextRank
+                        ? `${currentRank.title} to ${currentRank.nextRank.title}`
+                        : "Highest cognitive tier reached"
+                    }
+                    strong
+                  />
+                  <RoadmapStat
+                    label="Progress"
+                    value={`${currentRank.progress}%`}
+                    detail={
+                      currentRank.nextRank
+                        ? `${formatNumber(currentRank.minXp)} to ${formatNumber(currentRank.nextRank.minXp)} XP band`
+                        : `${formatNumber(currentRank.minXp)} XP mastery threshold`
+                    }
+                  />
                 </div>
 
                 <div className="mt-6">
@@ -321,7 +341,7 @@ export function RanksRoadmap() {
               <p className={`${LABEL_CLASS} text-zinc-500`}>Progression Path</p>
               <h2 className={`mt-3 text-3xl text-white sm:text-[3rem] ${HEADING_CLASS}`}>Ten tiers from curiosity to synthesis.</h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-300">
-                Each milestone reflects a deeper layer of learning maturity, from first contact to lasting intellectual command.
+                Each milestone reflects a deeper layer of learning maturity, with the final tiers reserved for sustained mastery over time.
               </p>
             </div>
             <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.04] px-5 py-4 backdrop-blur-[16px]">
