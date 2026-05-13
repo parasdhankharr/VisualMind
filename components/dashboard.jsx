@@ -1639,7 +1639,13 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants}>
-              <PersonalProgressCard summary={currentUserEntry} />
+              <Link
+                href="/ranks-roadmap"
+                aria-label="View rank roadmap"
+                className="block rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+              >
+                <PersonalProgressCard summary={currentUserEntry} />
+              </Link>
             </motion.section>
 
             <motion.section variants={cardVariants}>
