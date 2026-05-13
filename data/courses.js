@@ -285,8 +285,8 @@ export const demoCourses = [
 ];
 
 export const leaderboard = [
-  { name: "Aarav", xp: 4820, streak: 18 },
-  { name: "Maya", xp: 4590, streak: 15 },
-  { name: "Zoya", xp: 4210, streak: 12 },
-  { name: "Kabir", xp: 3970, streak: 10 }
+  { name: "Aarav", xp: 4820, streak: 18, weeklyXp: 320, movement: 1 },
+  { name: "Maya", xp: 4590, streak: 15, weeklyXp: 260, movement: 0 },
+  { name: "Zoya", xp: 4210, streak: 12, weeklyXp: 210, movement: 1 },
+  { name: "Kabir", xp: 3970, streak: 10, weeklyXp: 170, movement: -1 }
 ];

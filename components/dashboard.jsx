@@ -46,12 +46,25 @@ const SIDEBAR_COLLAPSED_WIDTH = 96;
 const SIDEBAR_EXPANDED_WIDTH = 248;
 const SIDEBAR_GAP = 24;
 const MAIN_DASHBOARD_MARGIN = 112;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const BRAND_GRADIENT = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)";
 const LABEL_CLASS = "text-[10px] font-semibold uppercase tracking-[0.1em]";
 const HEADING_CLASS = "font-extrabold tracking-[-0.03em]";
 const GLASS_CARD_CLASS = "border border-white/[0.05] backdrop-blur-[16px]";
 const PRIMARY_BUTTON_CLASS =
   "inline-flex items-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-slate-950 transition-[transform,filter,box-shadow] duration-200 hover:brightness-110";
+const RANK_PROGRESSION = [
+  { title: "Initiate", minXp: 0 },
+  { title: "Seeker", minXp: 400 },
+  { title: "Catalyst", minXp: 900 },
+  { title: "Vector", minXp: 1500 },
+  { title: "Ascendant", minXp: 2200 },
+  { title: "Luminary", minXp: 3000 },
+  { title: "Nexus", minXp: 3900 },
+  { title: "Vanguard", minXp: 4900 },
+  { title: "Zenith", minXp: 6100 },
+  { title: "Overmind", minXp: 7600 }
+];
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value || 0)));
@@ -75,6 +88,91 @@ function formatMinutes(minutes) {
 
   if (!remainder) return `${hours} hr left`;
   return `${hours}h ${remainder}m left`;
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("en-US");
+}
+
+function startOfDay(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function getRankMeta(xp) {
+  const safeXp = Math.max(0, Number(xp) || 0);
+  let currentRank = RANK_PROGRESSION[0];
+  let currentIndex = 0;
+
+  RANK_PROGRESSION.forEach((rank, index) => {
+    if (safeXp >= rank.minXp) {
+      currentRank = rank;
+      currentIndex = index;
+    }
+  });
+
+  const nextRank = RANK_PROGRESSION[currentIndex + 1] || null;
+  const progress = nextRank
+    ? clampPercent(((safeXp - currentRank.minXp) / Math.max(nextRank.minXp - currentRank.minXp, 1)) * 100)
+    : 100;
+
+  return {
+    ...currentRank,
+    index: currentIndex + 1,
+    nextRank,
+    progress,
+    xpToNext: nextRank ? Math.max(0, nextRank.minXp - safeXp) : 0
+  };
+}
+
+function buildWeeklyXpMeta(activities) {
+  const today = startOfDay();
+  const currentWeekStart = today - DAY_MS * 6;
+  const previousWeekStart = today - DAY_MS * 13;
+  const previousWeekEnd = currentWeekStart - DAY_MS;
+
+  return activities.reduce(
+    (summary, activity) => {
+      const day = startOfDay(activity.timestamp);
+      const value = Number(activity.xp) || 0;
+
+      if (day >= currentWeekStart && day <= today) {
+        summary.current += value;
+      } else if (day >= previousWeekStart && day <= previousWeekEnd) {
+        summary.previous += value;
+      }
+
+      return summary;
+    },
+    { current: 0, previous: 0 }
+  );
+}
+
+function getMovementMeta(value) {
+  const delta = Math.round(Number(value) || 0);
+
+  if (delta > 0) {
+    return {
+      icon: "↑",
+      label: `+${delta}`,
+      badgeClass: "border-cyan-400/20 bg-cyan-500/[0.08] text-cyan-100"
+    };
+  }
+
+  if (delta < 0) {
+    return {
+      icon: "↓",
+      label: `${delta}`,
+      badgeClass: "border-white/10 bg-white/[0.04] text-zinc-400"
+    };
+  }
+
+  return {
+    icon: "→",
+    label: "Hold",
+    badgeClass: "border-white/10 bg-white/[0.04] text-zinc-400"
+  };
 }
 
 function getTrendMeta(change) {
@@ -414,7 +512,7 @@ function SectionKick({ label, title, detail, action }) {
   );
 }
 
-function CountUpNumber({ value, suffix = "", prefix = "" }) {
+function CountUpNumber({ value, suffix = "", prefix = "", formatValue }) {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
@@ -438,7 +536,7 @@ function CountUpNumber({ value, suffix = "", prefix = "" }) {
   return (
     <span>
       {prefix}
-      {displayValue}
+      {formatValue ? formatValue(displayValue) : displayValue}
       {suffix}
     </span>
   );
@@ -484,11 +582,26 @@ function SidebarItem({ item, expanded }) {
   );
 }
 
-function StatPill({ label, value, tone = "text-white" }) {
+function StatPill({
+  label,
+  value,
+  tone = "text-white",
+  detail,
+  footer,
+  progressValue = null,
+  progressTrackClassName = ""
+}) {
   return (
     <div className="flex min-h-[112px] flex-col justify-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]">
       <p className={`${LABEL_CLASS} text-zinc-500`}>{label}</p>
       <p className={`mt-3 text-lg font-bold leading-7 ${tone}`}>{value}</p>
+      {detail ? <div className="mt-2 text-sm leading-6 text-zinc-400">{detail}</div> : null}
+      {progressValue !== null ? (
+        <div className="mt-4">
+          <GlowBar value={progressValue} trackClassName={`bg-black/35 ${progressTrackClassName}`} />
+        </div>
+      ) : null}
+      {footer ? <p className="mt-3 text-xs font-medium text-zinc-500">{footer}</p> : null}
     </div>
   );
 }
@@ -837,20 +950,148 @@ function GoalRow({ goal, onToggle }) {
   );
 }
 
-function SocialRow({ item, index }) {
+function PersonalProgressCard({ summary }) {
+  const movement = getMovementMeta(summary.movement);
+  const nextRankCopy = summary.nextRankTitle ? `${formatNumber(summary.xpToNext)} XP to ${summary.nextRankTitle}` : "Top tier secured";
+
   return (
-    <div className="flex items-center justify-between rounded-[12px] border border-white/[0.05] bg-white/[0.05] px-4 py-3.5 backdrop-blur-[16px]">
-      <div className="flex items-center gap-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-black/35 text-xs font-semibold text-zinc-300">
-          {index + 1}
+    <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
+      <Surface className="group relative overflow-hidden bg-white/[0.05] p-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.12),transparent_42%)] opacity-75 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+
+        <div className="relative">
+          <div>
+            <div>
+              <p className={`${LABEL_CLASS} text-zinc-500`}>Progress Snapshot</p>
+              <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{summary.rankTitle}</h2>
+            </div>
+          </div>
+
+          <p className={`mt-4 text-3xl text-white ${HEADING_CLASS}`}>{formatNumber(summary.xp)} XP</p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[14px] border border-white/[0.06] bg-[#1a1a1a] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+              <p className={`${LABEL_CLASS} text-zinc-500`}>Global Position</p>
+              <p className="mt-2 text-lg font-semibold text-white">#{summary.position}</p>
+            </div>
+
+            <div className="rounded-[14px] border border-white/[0.06] bg-[#1a1a1a] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+              <div className="flex items-center justify-between gap-3">
+                <p className={`${LABEL_CLASS} text-zinc-500`}>Weekly Gain</p>
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${movement.badgeClass}`}>
+                  {movement.icon} {movement.label}
+                </span>
+              </div>
+              <p className="mt-2 text-lg font-semibold text-white">+{formatNumber(summary.weeklyXp)} XP</p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[16px] border border-white/[0.06] bg-[#1a1a1a] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className={`${LABEL_CLASS} text-zinc-500`}>Next Rank</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-white">{nextRankCopy}</p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                {summary.nextRankTitle ? `${summary.rankProgress}%` : "MAX"}
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <GlowBar value={summary.rankProgress} trackClassName="bg-black/35" />
+            </div>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-white">{item.name}</p>
-          <p className="text-xs text-zinc-500">{item.streak} day streak</p>
+      </Surface>
+    </motion.div>
+  );
+}
+
+function SocialRow({ item, index }) {
+  const movement = getMovementMeta(item.movement);
+  const progressLabel = item.nextRankTitle ? `${formatNumber(item.xpToNext)} XP to ${item.nextRankTitle}` : "Top tier secured";
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 14 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.26, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }
+      }}
+      whileHover={{ y: -3 }}
+      className={`group relative overflow-hidden rounded-[20px] border px-5 py-4 backdrop-blur-[16px] transition-[border-color,background-color,box-shadow] duration-200 ${
+        item.isCurrentUser
+          ? "border-cyan-400/20 bg-cyan-500/[0.07] shadow-[0_0_22px_rgba(0,242,254,0.08)]"
+          : item.isTopTier
+            ? "border-white/[0.08] bg-white/[0.06] hover:border-white/[0.11] hover:bg-white/[0.075]"
+            : "border-white/[0.05] bg-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.065]"
+      }`}
+    >
+      <div
+        className={`pointer-events-none absolute inset-x-6 top-0 h-px transition-opacity duration-200 ${
+          item.isCurrentUser ? "bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent opacity-100" : "bg-white/[0.08] opacity-60"
+        }`}
+      />
+
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)_auto_auto] lg:items-center lg:gap-5">
+        <div className="flex min-w-0 items-center gap-4">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-sm font-semibold ${
+              item.isCurrentUser || item.isTopTier
+                ? "bg-cyan-500/[0.12] text-cyan-100 shadow-[0_0_18px_rgba(0,242,254,0.08)]"
+                : "bg-black/35 text-zinc-300"
+            }`}
+          >
+            {item.position || index + 1}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-semibold text-white">{item.name}</p>
+              {item.isCurrentUser ? (
+                <span className="rounded-full border border-cyan-400/20 bg-cyan-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
+                  You
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 truncate text-xs text-zinc-500">
+              {item.rankTitle} / {item.streak} day streak
+            </p>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <p className={`${LABEL_CLASS} text-zinc-500`}>Next Rank</p>
+            <p className="text-xs text-zinc-500">{progressLabel}</p>
+          </div>
+          <div className="mt-3">
+            <GlowBar value={item.rankProgress} trackClassName="bg-black/35" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 lg:justify-end">
+          <div className="text-left lg:text-right">
+            <p className={`${LABEL_CLASS} text-zinc-500`}>Weekly XP</p>
+            <p className="mt-2 text-sm font-semibold text-white">+{formatNumber(item.weeklyXp)}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${movement.badgeClass}`}>
+              {movement.icon} {movement.label}
+            </span>
+          </div>
+        </div>
+
+        <div className="text-left lg:text-right">
+          <p className={`${LABEL_CLASS} text-zinc-500`}>Total XP</p>
+          <p className={`mt-2 text-lg font-semibold ${item.isCurrentUser || item.isTopTier ? "text-white" : "text-zinc-200"}`}>
+            {formatNumber(item.xp)} XP
+          </p>
         </div>
       </div>
-      <p className="w-16 text-right text-sm font-semibold text-zinc-200">{item.xp} XP</p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -988,16 +1229,73 @@ export function Dashboard() {
     return weeklyLearningData.reduce((sum, item) => sum + item.minutes, 0);
   }, [weeklyLearningData]);
 
+  const weeklyXpMeta = useMemo(() => {
+    return buildWeeklyXpMeta(safeActivities);
+  }, [safeActivities]);
+
+  const currentRank = useMemo(() => {
+    return getRankMeta(xp);
+  }, [xp]);
+
   const groupedActivities = useMemo(() => {
     return groupActivities(safeActivities);
   }, [safeActivities]);
 
-  const leaderboardData = useMemo(() => {
-    const currentUser = { name: "You", xp, streak };
-    return [currentUser, ...leaderboard]
-      .sort((a, b) => b.xp - a.xp)
-      .slice(0, 5);
-  }, [streak, xp]);
+  const leaderboardEntries = useMemo(() => {
+    const currentMovement =
+      weeklyXpMeta.current > weeklyXpMeta.previous ? 1 : weeklyXpMeta.current < weeklyXpMeta.previous ? -1 : 0;
+
+    return [
+      {
+        name: "You",
+        xp,
+        streak,
+        weeklyXp: weeklyXpMeta.current,
+        movement: currentMovement,
+        isCurrentUser: true
+      },
+      ...leaderboard
+    ]
+      .map((item) => {
+        const rank = getRankMeta(item.xp);
+        return {
+          ...item,
+          rankTitle: rank.title,
+          rankIndex: rank.index,
+          rankProgress: rank.progress,
+          nextRankTitle: rank.nextRank?.title || null,
+          xpToNext: rank.xpToNext
+        };
+      })
+      .sort((left, right) => {
+        if (right.rankIndex !== left.rankIndex) return right.rankIndex - left.rankIndex;
+        if (right.xp !== left.xp) return right.xp - left.xp;
+        return (right.weeklyXp || 0) - (left.weeklyXp || 0);
+      })
+      .map((item, index) => ({
+        ...item,
+        position: index + 1,
+        isTopTier: index < 3
+      }));
+  }, [streak, weeklyXpMeta.current, weeklyXpMeta.previous, xp]);
+
+  const currentUserEntry = useMemo(() => {
+    return (
+      leaderboardEntries.find((item) => item.isCurrentUser) || {
+        name: "You",
+        xp,
+        streak,
+        weeklyXp: weeklyXpMeta.current,
+        movement: 0,
+        position: 1,
+        rankTitle: currentRank.title,
+        rankProgress: currentRank.progress,
+        nextRankTitle: currentRank.nextRank?.title || null,
+        xpToNext: currentRank.xpToNext,
+        isCurrentUser: true
+      }
+    );
+  }, [currentRank.nextRank?.title, currentRank.progress, currentRank.title, currentRank.xpToNext, leaderboardEntries, streak, weeklyXpMeta.current, xp]);
 
   const sidebarWidth = sidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
 
@@ -1101,7 +1399,7 @@ export function Dashboard() {
                     }`}
                   >
                     <p className="text-sm font-semibold text-white">Operator</p>
-                    <p className="text-xs text-zinc-500">Deep work mode</p>
+                    <p className="text-xs text-zinc-500">{currentRank.title} / Deep work mode</p>
                   </div>
                 </div>
               </div>
@@ -1131,7 +1429,23 @@ export function Dashboard() {
                     </p>
 
                     <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                      <StatPill label="Learning XP" value={<CountUpNumber value={xp} />} />
+                      <StatPill
+                        label="Learning XP"
+                        value={<CountUpNumber value={xp} formatValue={formatNumber} />}
+                        detail={
+                          <>
+                            <span className="font-semibold text-white">{currentRank.title}</span>
+                            <span className="text-zinc-600"> / </span>
+                            <span className="text-cyan-100">+{formatNumber(weeklyXpMeta.current)} this week</span>
+                          </>
+                        }
+                        progressValue={currentRank.progress}
+                        footer={
+                          currentRank.nextRank
+                            ? `${formatNumber(currentRank.xpToNext)} XP to ${currentRank.nextRank.title}`
+                            : "Overmind tier secured"
+                        }
+                      />
                       <StatPill label="Current Streak" value={<CountUpNumber value={streak} suffix="d" />} />
                       <StatPill label="Lessons Closed" value={<CountUpNumber value={completedLessonsCount} />} />
                     </div>
@@ -1306,13 +1620,7 @@ export function Dashboard() {
             </motion.section>
           </motion.div>
 
-          <motion.aside
-            variants={sectionVariants}
-            initial="hidden"
-            animate="show"
-            className="z-10 mt-5 space-y-5 xl:fixed xl:right-8 xl:top-5 xl:w-[312px]"
-            id="social"
-          >
+          <motion.aside variants={sectionVariants} initial="hidden" animate="show" className="z-10 mt-5 space-y-5 xl:fixed xl:right-8 xl:top-5 xl:w-[312px]">
             <motion.section variants={cardVariants}>
               <Surface className="bg-white/[0.05] p-6">
                 <p className={`${LABEL_CLASS} text-zinc-500`}>Daily Plan</p>
@@ -1331,21 +1639,7 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`${LABEL_CLASS} text-zinc-500`}>Social</p>
-                    <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>Leaderboard</h2>
-                  </div>
-                  <UsersIcon className="h-5 w-5 text-zinc-500" />
-                </div>
-
-                <div className="mt-5 space-y-3.5">
-                  {leaderboardData.map((item, index) => (
-                    <SocialRow key={`${item.name}-${index}`} item={item} index={index} />
-                  ))}
-                </div>
-              </Surface>
+              <PersonalProgressCard summary={currentUserEntry} />
             </motion.section>
 
             <motion.section variants={cardVariants}>
@@ -1366,6 +1660,30 @@ export function Dashboard() {
               </Surface>
             </motion.section>
           </motion.aside>
+
+          <motion.section variants={cardVariants} id="social" className="mt-5">
+            <Surface className="p-6 sm:p-8">
+              <SectionKick
+                label="Social Ranking"
+                title="Compare progression without losing focus."
+                detail="Your personal momentum stays in the sidebar. The wider leaderboard keeps social context spacious, readable, and secondary to learning flow."
+                action={
+                  <div className="rounded-[14px] border border-cyan-400/15 bg-cyan-500/[0.06] px-4 py-3 text-left shadow-[0_0_18px_rgba(0,242,254,0.06)]">
+                    <p className={`${LABEL_CLASS} text-cyan-100/70`}>Your Standing</p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      #{currentUserEntry.position} globally / {currentUserEntry.rankTitle}
+                    </p>
+                  </div>
+                }
+              />
+
+              <div className="mt-8 space-y-4">
+                {leaderboardEntries.map((item, index) => (
+                  <SocialRow key={`${item.name}-${item.position}`} item={item} index={index} />
+                ))}
+              </div>
+            </Surface>
+          </motion.section>
           </div>
         </div>
       </div>
