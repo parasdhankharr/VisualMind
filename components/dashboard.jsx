@@ -403,11 +403,11 @@ function Surface({ children, className = "", layer = 2 }) {
 
 function SectionKick({ label, title, detail, action }) {
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-6">
       <div>
         <p className={`${LABEL_CLASS} text-zinc-500`}>{label}</p>
         <h2 className={`mt-2 text-2xl text-white sm:text-[2rem] ${HEADING_CLASS}`}>{title}</h2>
-        {detail ? <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">{detail}</p> : null}
+        {detail ? <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">{detail}</p> : null}
       </div>
       {action}
     </div>
@@ -468,7 +468,7 @@ function SidebarItem({ item, expanded }) {
     <a
       href={`#${item.id}`}
       aria-label={item.label}
-      className="group flex items-center gap-3 rounded-[12px] px-3 py-3 text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+      className="group flex items-center gap-4 rounded-[12px] px-3 py-3 text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
     >
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#1a1a1a] text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <Icon />
@@ -486,9 +486,9 @@ function SidebarItem({ item, expanded }) {
 
 function StatPill({ label, value, tone = "text-white" }) {
   return (
-    <div className="flex min-h-[104px] flex-col justify-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]">
+    <div className="flex min-h-[112px] flex-col justify-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.02),inset_0_-10px_24px_rgba(0,0,0,0.2)]">
       <p className={`${LABEL_CLASS} text-zinc-500`}>{label}</p>
-      <p className={`mt-3 text-lg font-bold ${tone}`}>{value}</p>
+      <p className={`mt-3 text-lg font-bold leading-7 ${tone}`}>{value}</p>
     </div>
   );
 }
@@ -552,7 +552,7 @@ function CourseCard({ course, delay = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={`rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${GLASS_CARD_CLASS}`}
+      className={`rounded-[24px] bg-[#111111] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${GLASS_CARD_CLASS}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -565,7 +565,7 @@ function CourseCard({ course, delay = 0 }) {
         </div>
       </div>
 
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+      <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/[0.08]">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${course.progress}%` }}
@@ -575,23 +575,23 @@ function CourseCard({ course, delay = 0 }) {
         />
       </div>
 
-      <div className="mt-4 grid gap-3 rounded-[12px] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:grid-cols-3">
+      <div className="mt-5 grid gap-4 rounded-[12px] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:grid-cols-3">
         <div>
           <p className={`${LABEL_CLASS} text-zinc-500`}>Progress</p>
-          <p className="mt-2 text-sm font-semibold text-white">{course.progress}% complete</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.progress}% complete</p>
         </div>
         <div>
           <p className={`${LABEL_CLASS} text-zinc-500`}>Next Lesson</p>
-          <p className="mt-2 text-sm font-semibold text-white">{course.nextLessonTitle}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.nextLessonTitle}</p>
         </div>
         <div>
           <p className={`${LABEL_CLASS} text-zinc-500`}>Time Remaining</p>
-          <p className="mt-2 text-sm font-semibold text-white">{course.timeRemaining}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.timeRemaining}</p>
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-2">
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2.5">
           <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
             {course.lessons?.length || 0} lessons
           </span>
@@ -615,7 +615,7 @@ function LearningBars({ data }) {
   const maxValue = Math.max(...(data.length ? data.map((item) => item.minutes) : [1]), 1);
 
   return (
-    <div className={`rounded-[24px] bg-[#111111] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] ${GLASS_CARD_CLASS}`}>
+    <div className={`rounded-[24px] bg-[#111111] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.24)] ${GLASS_CARD_CLASS}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className={`${LABEL_CLASS} text-zinc-500`}>Focus Time</p>
@@ -625,9 +625,9 @@ function LearningBars({ data }) {
       </div>
 
       {data.length ? (
-        <div className="mt-6 flex h-44 items-end gap-3">
+        <div className="mt-7 flex h-44 items-end gap-4">
           {data.map((item) => (
-            <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
+            <div key={item.label} className="flex flex-1 flex-col items-center gap-3.5">
               <div className="flex h-full w-full items-end rounded-t-[12px] bg-black/30">
                 <div
                   className="w-full rounded-t-[12px]"
@@ -647,7 +647,7 @@ function LearningBars({ data }) {
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-[12px] bg-[#1a1a1a] p-4 text-sm text-zinc-400">
+        <div className="mt-7 rounded-[12px] bg-[#1a1a1a] p-5 text-sm leading-6 text-zinc-400">
           Finish a lesson session to start building your weekly load profile.
         </div>
       )}
@@ -712,7 +712,7 @@ function Sparkline({ values, tone = "steady" }) {
 function RecallWidget({ metric, resumeHref }) {
   if (!metric) {
     return (
-      <Surface layer={3} className="p-5">
+      <Surface layer={3} className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`${LABEL_CLASS} text-zinc-500`}>Recall Strength</p>
@@ -723,7 +723,7 @@ function RecallWidget({ metric, resumeHref }) {
           </span>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-6 space-y-3">
           <div className="skeleton h-20 rounded-[12px] bg-white/[0.06]" />
           <div className="skeleton h-3 w-3/4 rounded-full bg-white/[0.06]" />
           <div className="skeleton h-3 w-1/2 rounded-full bg-white/[0.06]" />
@@ -731,7 +731,7 @@ function RecallWidget({ metric, resumeHref }) {
 
         <Link
           href={resumeHref}
-          className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
+          className={`mt-6 ${PRIMARY_BUTTON_CLASS}`}
           style={{ backgroundImage: BRAND_GRADIENT }}
         >
           Complete your first lesson to unlock trends
@@ -744,7 +744,7 @@ function RecallWidget({ metric, resumeHref }) {
     metric.trend.label === "dropping" ? `${Math.abs(metric.trend.delta)}pt drop. Revise now.` : metric.trend.emphasis;
 
   return (
-    <Surface layer={3} className="p-5">
+    <Surface layer={3} className="p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className={`${LABEL_CLASS} text-zinc-500`}>Recall Strength</p>
@@ -768,12 +768,12 @@ function RecallWidget({ metric, resumeHref }) {
             : { boxShadow: "0 0 0 rgba(0,242,254,0)" }
         }
         transition={{ duration: 1.8, repeat: metric.trend.label === "dropping" ? Infinity : 0 }}
-        className="mt-5 rounded-[12px] bg-[#1a1a1a] p-3"
+        className="mt-6 rounded-[12px] bg-[#1a1a1a] p-4"
       >
         <Sparkline values={metric.series} tone={metric.trend.label} />
       </motion.div>
 
-      <div className="mt-4 flex items-center justify-between text-sm">
+      <div className="mt-5 flex items-center justify-between text-sm">
         <span className="text-zinc-400">Accuracy {metric.accuracyLabel}</span>
         <span className={metric.trend.tone}>
           {metric.trend.label === "dropping" ? "Loss aversion active" : metric.trend.emphasis}
@@ -795,18 +795,18 @@ function ActivityRow({ item, index }) {
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className={`rounded-[24px] bg-[#111111] p-4 ${GLASS_CARD_CLASS}`}
+      className={`rounded-[24px] bg-[#111111] p-5 ${GLASS_CARD_CLASS}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-white">{item.title}</p>
-          <p className="mt-1 text-sm text-zinc-300">{item.subtitle}</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-300">{item.subtitle}</p>
         </div>
         <span className={`shrink-0 rounded-[6px] px-3 py-1 text-xs font-semibold ${toneClasses[item.type] || toneClasses.learning}`}>
           {item.xp > 0 ? `+${item.xp} XP` : item.type}
         </span>
       </div>
-      <p className={`mt-3 ${LABEL_CLASS} text-zinc-500`}>
+      <p className={`mt-4 ${LABEL_CLASS} text-zinc-500`}>
         {getRelativeTimeLabel(item.timestamp)}
       </p>
     </motion.div>
@@ -829,9 +829,9 @@ function GoalRow({ goal, onToggle }) {
       >
         ✓
       </span>
-      <div>
+      <div className="pt-0.5">
         <p className="text-sm font-semibold text-white">{goal.label}</p>
-        <p className="mt-1 text-sm text-zinc-400">{goal.detail}</p>
+        <p className="mt-1.5 text-sm leading-6 text-zinc-400">{goal.detail}</p>
       </div>
     </button>
   );
@@ -839,8 +839,8 @@ function GoalRow({ goal, onToggle }) {
 
 function SocialRow({ item, index }) {
   return (
-    <div className="flex items-center justify-between rounded-[12px] border border-white/[0.05] bg-white/[0.05] px-4 py-3 backdrop-blur-[16px]">
-      <div className="flex items-center gap-5">
+    <div className="flex items-center justify-between rounded-[12px] border border-white/[0.05] bg-white/[0.05] px-4 py-3.5 backdrop-blur-[16px]">
+      <div className="flex items-center gap-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-black/35 text-xs font-semibold text-zinc-300">
           {index + 1}
         </div>
@@ -1030,7 +1030,7 @@ export function Dashboard() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,172,254,0.08),transparent_26%),radial-gradient(circle_at_85%_10%,rgba(0,242,254,0.06),transparent_18%)]" />
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.88),rgba(5,5,5,1))]" />
 
-      <div className="relative mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
         <div className="relative">
           <motion.aside
             animate={{}}
@@ -1038,7 +1038,7 @@ export function Dashboard() {
             onMouseLeave={() => setSidebarExpanded(false)}
             onFocusCapture={() => setSidebarExpanded(true)}
             onBlurCapture={() => setSidebarExpanded(false)}
-            className={`z-30 w-full overflow-hidden rounded-[24px] border border-white/[0.05] bg-white/[0.05] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[16px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-4 xl:h-[calc(100vh-2rem)] ${
+            className={`z-30 w-full overflow-hidden rounded-[24px] border border-white/[0.05] bg-white/[0.05] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[16px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-5 xl:h-[calc(100vh-2.5rem)] ${
               sidebarExpanded ? "xl:w-[248px]" : "xl:w-[96px]"
             }`}
             style={{ zIndex: 40 }}
@@ -1058,16 +1058,16 @@ export function Dashboard() {
                 </div>
               </div>
 
-              <nav className="mt-6 space-y-2">
+              <nav className="mt-8 space-y-2.5">
                 {sidebarLinks.map((item) => (
                   <SidebarItem key={item.id} item={item} expanded={sidebarExpanded} />
                 ))}
               </nav>
 
-              <div className="mt-6 flex flex-col items-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
+              <div className="mt-8 flex flex-col items-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
                 <TodayRing value={todayProgress} expanded={sidebarExpanded} />
                 <p
-                  className={`mt-3 overflow-hidden text-center text-xs text-zinc-400 transition-all duration-200 ${
+                  className={`mt-4 overflow-hidden text-center text-xs leading-5 text-zinc-400 transition-all duration-200 ${
                     sidebarExpanded ? "xl:max-h-10 xl:opacity-100" : "xl:max-h-0 xl:opacity-0"
                   }`}
                 >
@@ -1077,7 +1077,7 @@ export function Dashboard() {
 
               <Link
                 href="/ai-lab"
-                className={`mt-4 justify-center ${PRIMARY_BUTTON_CLASS}`}
+                className={`mt-5 justify-center ${PRIMARY_BUTTON_CLASS}`}
                 style={{ backgroundImage: BRAND_GRADIENT }}
               >
                 <SparkIcon className="h-4 w-4" />
@@ -1090,8 +1090,8 @@ export function Dashboard() {
                 </span>
               </Link>
 
-              <div className="mt-auto pt-6">
-                <div className="flex items-center gap-3 rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
+              <div className="mt-auto pt-8">
+                <div className="flex items-center gap-3 rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-black text-sm font-semibold text-white">
                     N
                   </div>
@@ -1109,28 +1109,28 @@ export function Dashboard() {
           </motion.aside>
 
           <div
-            className="transition-[padding,margin] duration-200 xl:ml-[112px] xl:pl-[var(--sidebar-offset)] xl:pr-[324px]"
+            className="transition-[padding,margin] duration-200 xl:ml-[112px] xl:pl-[var(--sidebar-offset)] xl:pr-[336px]"
             style={{ "--sidebar-offset": `${Math.max(sidebarWidth + SIDEBAR_GAP - MAIN_DASHBOARD_MARGIN, 0)}px` }}
           >
           <motion.div
             variants={sectionVariants}
             initial="hidden"
             animate="show"
-            className="z-10 min-w-0 space-y-4"
+            className="z-10 min-w-0 space-y-5"
           >
             <motion.section variants={cardVariants} id="home">
-              <Surface className="overflow-hidden p-6 sm:p-7">
-                <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <Surface className="overflow-hidden p-6 sm:p-8">
+                <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr] xl:gap-10">
                   <div>
                     <p className={`${LABEL_CLASS} leading-[1.2] text-zinc-500`}>Operational View</p>
                     <h1 className={`mt-3 max-w-3xl text-4xl leading-[1.15] text-white sm:text-[3.5rem] ${HEADING_CLASS}`}>
                       Production-grade learning, tuned for deep work.
                     </h1>
-                    <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-300">
+                    <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">
                       VisualMind now prioritizes active paths, revision risk, and next actions over decorative noise.
                     </p>
 
-                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-8 grid gap-4 sm:grid-cols-3">
                       <StatPill label="Learning XP" value={<CountUpNumber value={xp} />} />
                       <StatPill label="Current Streak" value={<CountUpNumber value={streak} suffix="d" />} />
                       <StatPill label="Lessons Closed" value={<CountUpNumber value={completedLessonsCount} />} />
@@ -1138,7 +1138,7 @@ export function Dashboard() {
                   </div>
 
                   <div
-                    className="rounded-[24px] border border-white/[0.08] p-5 text-white shadow-[0_20px_50px_rgba(79,172,254,0.2)]"
+                    className="rounded-[24px] border border-white/[0.08] p-6 sm:p-7 text-white shadow-[0_20px_50px_rgba(79,172,254,0.2)]"
                     style={{
                       backgroundImage: BRAND_GRADIENT,
                       filter: "drop-shadow(0 0 8px rgba(79, 172, 254, 0.3))"
@@ -1148,13 +1148,13 @@ export function Dashboard() {
                     <h2 className={`mt-3 text-3xl text-white sm:text-[2.8rem] ${HEADING_CLASS}`}>
                       {resumeCourse ? `Resume ${resumeCourse.title}` : "Create your first path"}
                     </h2>
-                    <p className="mt-3 text-sm leading-6 text-white/85">
+                    <p className="mt-4 text-sm leading-7 text-white/85">
                       {resumeCourse
                         ? `${resumeCourse.nextLessonTitle} is next. Stay inside the same path and protect recall momentum.`
                         : "Generate a course in the AI Lab to unlock your active workspace."}
                     </p>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
                       <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
                         <p className={`${LABEL_CLASS} text-white/65`}>Progress</p>
                         <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? `${resumeCourse.progress}%` : "0%"}</p>
@@ -1171,12 +1171,12 @@ export function Dashboard() {
 
                     {resumeCourse ? (
                       <>
-                        <div className="mt-5">
+                        <div className="mt-6">
                           <GlowBar value={resumeCourse.progress} trackClassName="bg-white/20" />
                         </div>
                         <Link
                           href={`/courses/${resumeCourse.id}`}
-                          className={`${PRIMARY_BUTTON_CLASS} mt-5 px-5 py-3`}
+                          className={`${PRIMARY_BUTTON_CLASS} mt-6 px-5 py-3`}
                           style={{
                             backgroundImage: BRAND_GRADIENT,
                             boxShadow: "0 0 24px rgba(79,172,254,0.2)"
@@ -1189,7 +1189,7 @@ export function Dashboard() {
                     ) : (
                       <Link
                         href="/ai-lab"
-                        className={`${PRIMARY_BUTTON_CLASS} mt-5 px-5 py-3`}
+                        className={`${PRIMARY_BUTTON_CLASS} mt-6 px-5 py-3`}
                         style={{
                           backgroundImage: BRAND_GRADIENT,
                           boxShadow: "0 0 24px rgba(79,172,254,0.2)"
@@ -1205,7 +1205,7 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants} id="courses">
-              <Surface className="p-6 sm:p-7">
+              <Surface className="p-6 sm:p-8">
                 <SectionKick
                   label="Active Courses"
                   title="Keep every live path visible."
@@ -1213,20 +1213,20 @@ export function Dashboard() {
                 />
 
                 {visibleCourses.length ? (
-                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                  <div className="mt-8 grid gap-5 lg:grid-cols-2">
                     {visibleCourses.map((course, index) => (
                       <CourseCard key={course.id} course={course} delay={index * 0.05} />
                     ))}
                   </div>
                 ) : (
-                  <div className={`mt-6 rounded-[24px] bg-[#111111] p-6 ${GLASS_CARD_CLASS}`}>
+                  <div className={`mt-8 rounded-[24px] bg-[#111111] p-6 sm:p-7 ${GLASS_CARD_CLASS}`}>
                     <p className="text-lg font-bold text-white">No active paths yet.</p>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
                       Generate your first AI course and this workspace will fill with progress bars, next lessons, and recall signals.
                     </p>
                     <Link
                       href="/ai-lab"
-                      className={`mt-4 ${PRIMARY_BUTTON_CLASS}`}
+                      className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
                       style={{ backgroundImage: BRAND_GRADIENT }}
                     >
                       Generate a path
@@ -1237,18 +1237,18 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants} id="analytics">
-              <Surface className="p-6 sm:p-7">
+              <Surface className="p-6 sm:p-8">
                 <SectionKick
                   label="Analytics"
                   title="Focus and retention in one pass."
                   detail="Progress momentum stays bright. Risk signals stay obvious."
                 />
 
-                <div className="mt-6 grid gap-4 2xl:grid-cols-[1.05fr_0.95fr]">
+                <div className="mt-8 grid gap-5 2xl:grid-cols-[1.03fr_0.97fr] 2xl:gap-6">
                   <LearningBars data={weeklyLearningData} />
 
-                  <div className="space-y-4">
-                    <Surface layer={3} className="p-5">
+                  <div className="space-y-5">
+                    <Surface layer={3} className="p-6">
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className={`${LABEL_CLASS} text-zinc-500`}>Engagement Score</p>
@@ -1260,7 +1260,7 @@ export function Dashboard() {
                           {engagementMetric ? `${engagementMetric.trend.arrow} ${engagementMetric.trend.emphasis}` : "Start a lesson"}
                         </span>
                       </div>
-                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2">
                         <StatPill
                           label="Focus Minutes"
                           value={`${focusMinutes}m`}
@@ -1284,7 +1284,7 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants} id="activity">
-              <Surface className="p-6 sm:p-7">
+              <Surface className="p-6 sm:p-8">
                 <SectionKick
                   label="Activity Feed"
                   title="What moved most recently."
@@ -1292,13 +1292,13 @@ export function Dashboard() {
                 />
 
                 {groupedActivities.length ? (
-                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                  <div className="mt-8 grid gap-5 lg:grid-cols-2">
                     {groupedActivities.map((item, index) => (
                       <ActivityRow key={item.id} item={item} index={index} />
                     ))}
                   </div>
                 ) : (
-                  <div className={`mt-6 rounded-[24px] bg-[#111111] p-6 text-sm text-zinc-400 ${GLASS_CARD_CLASS}`}>
+                  <div className={`mt-8 rounded-[24px] bg-[#111111] p-6 text-sm leading-6 text-zinc-400 ${GLASS_CARD_CLASS}`}>
                     Activity appears here after you generate a course, open a lesson, or clear a quiz.
                   </div>
                 )}
@@ -1310,19 +1310,19 @@ export function Dashboard() {
             variants={sectionVariants}
             initial="hidden"
             animate="show"
-            className="z-10 mt-4 space-y-4 xl:fixed xl:right-8 xl:top-4 xl:w-[300px]"
+            className="z-10 mt-5 space-y-5 xl:fixed xl:right-8 xl:top-5 xl:w-[312px]"
             id="social"
           >
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-5">
+              <Surface className="bg-white/[0.05] p-6">
                 <p className={`${LABEL_CLASS} text-zinc-500`}>Daily Plan</p>
                 <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{todayProgress}% Today</h2>
-                <p className="mt-2 text-sm text-zinc-400">Small wins, high carry-over.</p>
-                <div className="mt-4">
+                <p className="mt-3 text-sm leading-6 text-zinc-400">Small wins, high carry-over.</p>
+                <div className="mt-5">
                   <GlowBar value={todayProgress} />
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-5 space-y-3.5">
                   {dailyGoals.map((goal) => (
                     <GoalRow key={goal.id} goal={goal} onToggle={toggleGoal} />
                   ))}
@@ -1331,7 +1331,7 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-5">
+              <Surface className="bg-white/[0.05] p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`${LABEL_CLASS} text-zinc-500`}>Social</p>
@@ -1340,7 +1340,7 @@ export function Dashboard() {
                   <UsersIcon className="h-5 w-5 text-zinc-500" />
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-5 space-y-3.5">
                   {leaderboardData.map((item, index) => (
                     <SocialRow key={`${item.name}-${index}`} item={item} index={index} />
                   ))}
@@ -1349,15 +1349,15 @@ export function Dashboard() {
             </motion.section>
 
             <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-5">
+              <Surface className="bg-white/[0.05] p-6">
                 <p className={`${LABEL_CLASS} text-zinc-500`}>AI Workflow</p>
                 <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>Refine another concept.</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                <p className="mt-3 text-sm leading-7 text-zinc-300">
                   Use the lab when you need a new learning path or a tighter concept breakdown.
                 </p>
                 <Link
                   href="/ai-lab"
-                  className={`mt-4 ${PRIMARY_BUTTON_CLASS}`}
+                  className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
                   style={{ backgroundImage: BRAND_GRADIENT }}
                 >
                   <SparkIcon className="h-4 w-4" />
