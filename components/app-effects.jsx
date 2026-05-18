@@ -1,10 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { AnimatedBackground, PageTransition, ScrollProgress } from "@/components/animation-kit";
-
-const TargetCursor = dynamic(() => import("./target-cursor"), { ssr: false });
+import TargetCursor from "./target-cursor";
 
 export function AppEffects({ children }) {
   const pathname = usePathname();
