@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { leaderboard } from "@/data/courses";
+import { leaderboard as fallbackLeaderboard } from "@/data/courses";
 import { getRankMeta } from "@/data/ranks";
 import { formatStreakLabel, getMomentumSnapshot } from "@/data/streaks";
 import { getRelativeTimeLabel } from "@/lib/learning";
@@ -14,7 +14,8 @@ const sidebarLinks = [
   { id: "courses", label: "Courses", icon: LibraryIcon },
   { id: "analytics", label: "Analytics", icon: ChartIcon },
   { id: "activity", label: "Activity", icon: PulseIcon },
-  { id: "social", label: "Social", icon: UsersIcon }
+  { id: "social", label: "Social", icon: UsersIcon },
+  { id: "profile", label: "Profile", icon: UserIcon, href: "/profile" }
 ];
 
 const defaultGoals = [
@@ -49,7 +50,7 @@ const SIDEBAR_EXPANDED_WIDTH = 248;
 const SIDEBAR_GAP = 24;
 const MAIN_DASHBOARD_MARGIN = 112;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const BRAND_GRADIENT = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)";
+const BRAND_GRADIENT = "radial-gradient(circle 476px at 54.8% 51.5%, rgba(168,229,253,1) 0%, rgba(244,244,254,1) 42.3%, rgba(244,244,254,1) 100.2%)";
 const LABEL_CLASS = "text-[10px] font-semibold uppercase tracking-[0.1em]";
 const HEADING_CLASS = "font-extrabold tracking-[-0.03em]";
 const GLASS_CARD_CLASS = "border border-white/[0.05] backdrop-blur-[16px]";
@@ -120,7 +121,7 @@ function getMovementMeta(value) {
     return {
       icon: "↑",
       label: `+${delta}`,
-      badgeClass: "border-cyan-400/20 bg-cyan-500/[0.08] text-cyan-100"
+      badgeClass: "border-cyan-400/20 bg-cyan-500/[0.08] text-slate-900"
     };
   }
 
@@ -426,6 +427,15 @@ function UsersIcon(props) {
   );
 }
 
+function UserIcon(props) {
+  return (
+    <ShellIcon {...props}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </ShellIcon>
+  );
+}
+
 function BoltIcon(props) {
   return (
     <ShellIcon {...props}>
@@ -454,9 +464,8 @@ function SparkIcon(props) {
 function Surface({ children, className = "", layer = 2 }) {
   return (
     <div
-      className={`rounded-[24px] ${
-        layer === 3 ? "bg-[#151515]" : "bg-[#111111]"
-      } ${GLASS_CARD_CLASS} shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${className}`}
+      className={`rounded-[24px] ${layer === 3 ? "bg-[#151515]" : "bg-[#111111]"
+        } ${GLASS_CARD_CLASS} shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${className}`}
     >
       {children}
     </div>
@@ -526,6 +535,26 @@ function GlowBar({ value, className = "", trackClassName = "" }) {
 function SidebarItem({ item, expanded }) {
   const Icon = item.icon;
 
+  if (item.href) {
+    return (
+      <Link
+        href={item.href}
+        aria-label={item.label}
+        className="group flex items-center gap-4 rounded-[12px] px-3 py-3 text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#1a1a1a] text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <Icon />
+        </span>
+        <span
+          className={`min-w-0 overflow-hidden text-sm font-semibold tracking-[0.01em] opacity-100 transition-all duration-200 ${expanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+            }`}
+        >
+          {item.label}
+        </span>
+      </Link>
+    );
+  }
+
   return (
     <a
       href={`#${item.id}`}
@@ -536,9 +565,8 @@ function SidebarItem({ item, expanded }) {
         <Icon />
       </span>
       <span
-        className={`min-w-0 overflow-hidden text-sm font-semibold tracking-[0.01em] opacity-100 transition-all duration-200 ${
-          expanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
-        }`}
+        className={`min-w-0 overflow-hidden text-sm font-semibold tracking-[0.01em] opacity-100 transition-all duration-200 ${expanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+          }`}
       >
         {item.label}
       </span>
@@ -593,7 +621,7 @@ function MomentumStatPill({ snapshot }) {
         <div className="mt-2 text-sm leading-6 text-zinc-400">
           <span className="font-semibold text-white">{formatStreakLabel(snapshot.currentStreak)}</span>
           <span className="text-zinc-600"> / </span>
-          <span className="text-cyan-100">{snapshot.statusLabel}</span>
+          <span className="text-slate-900">{snapshot.statusLabel}</span>
         </div>
 
         <div className="mt-4">
@@ -607,7 +635,7 @@ function MomentumStatPill({ snapshot }) {
 }
 
 function TodayRing({ value, expanded }) {
-  const size = expanded ? 120 : 60;
+  const size = expanded ? 120 : 48;
   const strokeWidth = 6;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -615,9 +643,8 @@ function TodayRing({ value, expanded }) {
 
   return (
     <div
-      className={`relative flex shrink-0 items-center justify-center transition-[width,height] duration-200 ${
-        expanded ? "h-[120px] w-[120px]" : "h-[60px] w-[60px]"
-      }`}
+      className={`relative flex shrink-0 items-center justify-center transition-[width,height] duration-200 ${expanded ? "h-[120px] w-[120px]" : "h-[48px] w-[48px]"
+        }`}
       style={{ width: size, height: size }}
     >
       <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 h-full w-full -rotate-90">
@@ -659,65 +686,143 @@ function TodayRing({ value, expanded }) {
   );
 }
 
-function CourseCard({ course, delay = 0 }) {
+function CourseCard({ course, delay = 0, isCompleted = false }) {
+  if (isCompleted) {
+    return (
+      <motion.article
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
+        className={`rounded-[24px] bg-[#111111] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${GLASS_CARD_CLASS}`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={`${LABEL_CLASS} text-zinc-500`}>{course.category}</p>
+            <h3 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{course.title}</h3>
+          </div>
+          <div className="rounded-[6px] bg-[#1a1a1a] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+            <p className={`${LABEL_CLASS} text-zinc-500`}>XP</p>
+            <p className="mt-1 text-lg font-bold text-white">{course.earnedXp}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${course.progress}%` }}
+            transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="h-full rounded-full"
+            style={{ backgroundImage: BRAND_GRADIENT }}
+          />
+        </div>
+
+        <div className="mt-5 grid gap-4 rounded-[12px] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:grid-cols-3">
+          <div>
+            <p className={`${LABEL_CLASS} text-zinc-500`}>Progress</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.progress}% complete</p>
+          </div>
+          <div>
+            <p className={`${LABEL_CLASS} text-zinc-500`}>Next Lesson</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.nextLessonTitle}</p>
+          </div>
+          <div>
+            <p className={`${LABEL_CLASS} text-zinc-500`}>Time Remaining</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.timeRemaining}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-2.5">
+            <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+              {course.lessons?.length || 0} lessons
+            </span>
+            <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+              {course.duration}
+            </span>
+          </div>
+          <Link
+            href={`/courses/${course.id}`}
+            className="inline-flex items-center gap-2 rounded-[12px] bg-[#1a1a1a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#222222]"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-emerald-400">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            Review Path
+          </Link>
+        </div>
+      </motion.article>
+    );
+  }
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={`rounded-[24px] bg-[#111111] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.28)] ${GLASS_CARD_CLASS}`}
+      className="rounded-[24px] border border-white/[0.08] p-6 text-slate-900 shadow-[0_20px_50px_rgba(168,229,253,0.3)]"
+      style={{
+        backgroundImage: BRAND_GRADIENT,
+        filter: "drop-shadow(0 0 8px rgba(79, 172, 254, 0.3))"
+      }}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className={`${LABEL_CLASS} text-zinc-500`}>{course.category}</p>
-          <h3 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{course.title}</h3>
+          <p className={`${LABEL_CLASS} text-slate-800/80`}>{course.category}</p>
+          <h3 className={`mt-2 text-2xl text-slate-900 ${HEADING_CLASS}`}>{course.title}</h3>
         </div>
-        <div className="rounded-[6px] bg-[#1a1a1a] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-          <p className={`${LABEL_CLASS} text-zinc-500`}>XP</p>
-          <p className="mt-1 text-lg font-bold text-white">{course.earnedXp}</p>
+        <div className="rounded-[6px] bg-slate-900/5 px-3 py-2 text-right backdrop-blur-md border border-slate-900/5">
+          <p className={`${LABEL_CLASS} text-slate-600`}>XP</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{course.earnedXp}</p>
         </div>
       </div>
 
-      <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${course.progress}%` }}
-          transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full rounded-full"
-          style={{ backgroundImage: BRAND_GRADIENT }}
-        />
+      <div className="mt-6">
+        <GlowBar value={course.progress} trackClassName="bg-slate-900/10" />
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-[12px] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:grid-cols-3">
+      <div className="mt-5 grid gap-4 rounded-[12px] bg-slate-900/5 p-5 backdrop-blur-md sm:grid-cols-3">
         <div>
-          <p className={`${LABEL_CLASS} text-zinc-500`}>Progress</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.progress}% complete</p>
+          <p className={`${LABEL_CLASS} text-slate-600`}>Progress</p>
+          <p className="mt-2 text-sm font-bold text-slate-900">{course.progress}% complete</p>
         </div>
         <div>
-          <p className={`${LABEL_CLASS} text-zinc-500`}>Next Lesson</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.nextLessonTitle}</p>
+          <p className={`${LABEL_CLASS} text-slate-600`}>Next Lesson</p>
+          <p className="mt-2 text-sm font-bold text-slate-900 line-clamp-1">{course.nextLessonTitle}</p>
         </div>
         <div>
-          <p className={`${LABEL_CLASS} text-zinc-500`}>Time Remaining</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white">{course.timeRemaining}</p>
+          <p className={`${LABEL_CLASS} text-slate-600`}>Time Remaining</p>
+          <p className="mt-2 text-sm font-bold text-slate-900">{course.timeRemaining}</p>
         </div>
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-4">
         <div className="flex flex-wrap gap-2.5">
-          <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+          <span className="rounded-[6px] bg-slate-900/5 px-3 py-1.5 text-xs font-semibold text-slate-700 backdrop-blur-md">
             {course.lessons?.length || 0} lessons
           </span>
-          <span className="rounded-[6px] bg-black px-3 py-1.5 text-xs font-medium text-zinc-300">
+          <span className="rounded-[6px] bg-slate-900/5 px-3 py-1.5 text-xs font-semibold text-slate-700 backdrop-blur-md">
             {course.duration}
           </span>
         </div>
         <Link
           href={`/courses/${course.id}`}
-          className="inline-flex items-center gap-2 rounded-[12px] bg-[#1a1a1a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#222222]"
+          className="inline-flex items-center gap-2 rounded-[12px] bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 shadow-[0_4px_14px_rgba(0,0,0,0.1)]"
         >
-          <PlayIcon className="h-4 w-4" />
-          Open Path
+          {course.progress === 100 ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-emerald-400">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              Review Path
+            </>
+          ) : (
+            <>
+              <PlayIcon className="h-4 w-4" />
+              Open Path
+            </>
+          )}
         </Link>
       </div>
     </motion.article>
@@ -872,12 +977,12 @@ function RecallWidget({ metric, resumeHref }) {
         animate={
           metric.trend.label === "dropping"
             ? {
-                boxShadow: [
-                  "0 0 0 rgba(0,242,254,0.08)",
-                  "0 0 22px rgba(0,242,254,0.22)",
-                  "0 0 0 rgba(0,242,254,0.08)"
-                ]
-              }
+              boxShadow: [
+                "0 0 0 rgba(0,242,254,0.08)",
+                "0 0 22px rgba(0,242,254,0.22)",
+                "0 0 0 rgba(0,242,254,0.08)"
+              ]
+            }
             : { boxShadow: "0 0 0 rgba(0,242,254,0)" }
         }
         transition={{ duration: 1.8, repeat: metric.trend.label === "dropping" ? Infinity : 0 }}
@@ -900,7 +1005,7 @@ function ActivityRow({ item, index }) {
   const toneClasses = {
     learning: "bg-[#1a1a1a] text-white",
     quiz: "bg-[#1a1a1a] text-white",
-    transform: "bg-cyan-500/[0.08] text-cyan-100"
+    transform: "bg-cyan-500/[0.08] text-slate-900"
   };
 
   return (
@@ -931,14 +1036,12 @@ function GoalRow({ goal, onToggle }) {
     <button
       type="button"
       onClick={() => onToggle(goal.id)}
-      className={`flex w-full items-start gap-3 rounded-[12px] border border-white/[0.05] p-4 text-left backdrop-blur-[16px] transition ${
-        goal.done ? "bg-white/[0.08]" : "bg-[#1a1a1a]"
-      }`}
+      className={`flex w-full items-start gap-3 rounded-[12px] border border-white/[0.05] p-4 text-left backdrop-blur-[16px] transition ${goal.done ? "bg-white/[0.08]" : "bg-[#1a1a1a]"
+        }`}
     >
       <span
-        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border text-xs font-bold ${
-          goal.done ? "border-[#00f2fe] bg-[#00f2fe] text-black" : "border-white/12 bg-black text-transparent"
-        }`}
+        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border text-xs font-bold ${goal.done ? "border-[#00f2fe] bg-[#00f2fe] text-black" : "border-white/12 bg-black text-transparent"
+          }`}
       >
         ✓
       </span>
@@ -1022,28 +1125,25 @@ function SocialRow({ item, index }) {
         transition: { duration: 0.26, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }
       }}
       whileHover={{ y: -3 }}
-      className={`group relative overflow-hidden rounded-[20px] border px-5 py-4 backdrop-blur-[16px] transition-[border-color,background-color,box-shadow] duration-200 ${
-        item.isCurrentUser
-          ? "border-cyan-400/20 bg-cyan-500/[0.07] shadow-[0_0_22px_rgba(0,242,254,0.08)]"
-          : item.isTopTier
-            ? "border-white/[0.08] bg-white/[0.06] hover:border-white/[0.11] hover:bg-white/[0.075]"
-            : "border-white/[0.05] bg-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.065]"
-      }`}
+      className={`group relative overflow-hidden rounded-[20px] border px-5 py-4 backdrop-blur-[16px] transition-[border-color,background-color,box-shadow] duration-200 ${item.isCurrentUser
+        ? "border-cyan-400/20 bg-cyan-500/[0.07] shadow-[0_0_22px_rgba(0,242,254,0.08)]"
+        : item.isTopTier
+          ? "border-white/[0.08] bg-white/[0.06] hover:border-white/[0.11] hover:bg-white/[0.075]"
+          : "border-white/[0.05] bg-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.065]"
+        }`}
     >
       <div
-        className={`pointer-events-none absolute inset-x-6 top-0 h-px transition-opacity duration-200 ${
-          item.isCurrentUser ? "bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent opacity-100" : "bg-white/[0.08] opacity-60"
-        }`}
+        className={`pointer-events-none absolute inset-x-6 top-0 h-px transition-opacity duration-200 ${item.isCurrentUser ? "bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent opacity-100" : "bg-white/[0.08] opacity-60"
+          }`}
       />
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)_auto_auto] lg:items-center lg:gap-5">
         <div className="flex min-w-0 items-center gap-4">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-sm font-semibold ${
-              item.isCurrentUser || item.isTopTier
-                ? "bg-cyan-500/[0.12] text-cyan-100 shadow-[0_0_18px_rgba(0,242,254,0.08)]"
-                : "bg-black/35 text-zinc-300"
-            }`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-sm font-semibold ${item.isCurrentUser || item.isTopTier
+              ? "bg-cyan-500/[0.12] text-slate-900 shadow-[0_0_18px_rgba(0,242,254,0.08)]"
+              : "bg-black/35 text-zinc-300"
+              }`}
           >
             {item.position || index + 1}
           </div>
@@ -1051,7 +1151,7 @@ function SocialRow({ item, index }) {
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-semibold text-white">{item.name}</p>
               {item.isCurrentUser ? (
-                <span className="rounded-full border border-cyan-400/20 bg-cyan-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
+                <span className="rounded-full border border-cyan-400/20 bg-cyan-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-900">
                   You
                 </span>
               ) : null}
@@ -1097,6 +1197,8 @@ function SocialRow({ item, index }) {
 
 export function Dashboard() {
   const {
+    name,
+    email,
     xp,
     streak,
     longestStreak,
@@ -1110,6 +1212,32 @@ export function Dashboard() {
     completedCourses,
     syncGeneratedCourses
   } = useLearningStore();
+
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
+
+  useEffect(() => {
+    let ignore = false;
+    async function fetchLeaderboard() {
+      try {
+        const response = await fetch("/api/leaderboard");
+        const data = await response.json();
+        if (!ignore && Array.isArray(data)) {
+          setGlobalLeaderboard(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch leaderboard", err);
+      }
+    }
+    fetchLeaderboard();
+
+    // High-frequency real-time polling to keep standings dynamically synchronized across all connected users
+    const interval = setInterval(fetchLeaderboard, 8000);
+
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, []);
   const safeGeneratedCourses = Array.isArray(generatedCourses) ? generatedCourses.filter(Boolean) : [];
   const safeCourseProgress = courseProgress && typeof courseProgress === "object" ? courseProgress : {};
   const safeActivities = Array.isArray(activities) ? activities.filter(Boolean) : [];
@@ -1117,7 +1245,7 @@ export function Dashboard() {
   const safeLessonSessions = Array.isArray(lessonSessions) ? lessonSessions.filter(Boolean) : [];
   const safeQuizAttempts = Array.isArray(quizAttempts) ? quizAttempts.filter(Boolean) : [];
   const safeCompletedCourses = completedCourses && typeof completedCourses === "object" ? completedCourses : {};
-  const [dailyGoals, setDailyGoals] = useState(defaultGoals.map((goal, index) => ({ ...goal, done: index !== 1 })));
+  const [dailyGoals, setDailyGoals] = useState(defaultGoals.map((goal) => ({ ...goal, done: false })));
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   useEffect(() => {
@@ -1142,8 +1270,8 @@ export function Dashboard() {
     };
   }, [syncGeneratedCourses]);
 
-  const visibleCourses = useMemo(() => {
-    return safeGeneratedCourses.slice(0, 4).map((course) => {
+  const allCoursesWithProgress = useMemo(() => {
+    return safeGeneratedCourses.map((course) => {
       const state = safeCourseProgress[course.id];
       const progress = clampPercent(state?.progress ?? course.progress ?? 0);
       const earnedXp = state?.xp || course.xp || 0;
@@ -1152,13 +1280,21 @@ export function Dashboard() {
     });
   }, [safeCompletedCourses, safeCourseProgress, safeGeneratedCourses]);
 
+  const activeCourses = useMemo(() => {
+    return allCoursesWithProgress.filter((course) => course.progress < 100).slice(0, 4);
+  }, [allCoursesWithProgress]);
+
+  const completedHistoryCourses = useMemo(() => {
+    return allCoursesWithProgress.filter((course) => course.progress === 100);
+  }, [allCoursesWithProgress]);
+
   const resumeCourse = useMemo(() => {
     return (
-      visibleCourses.find((course) => course.id === lastOpenedCourseId) ||
-      visibleCourses.find((course) => course.progress > 0) ||
-      visibleCourses[0]
+      activeCourses.find((course) => course.id === lastOpenedCourseId) ||
+      activeCourses.find((course) => course.progress > 0) ||
+      activeCourses[0]
     );
-  }, [lastOpenedCourseId, visibleCourses]);
+  }, [lastOpenedCourseId, activeCourses]);
 
   const weeklyLearningData = useMemo(() => {
     if (!safeLessonSessions.length) return [];
@@ -1256,17 +1392,45 @@ export function Dashboard() {
     const currentMovement =
       weeklyXpMeta.current > weeklyXpMeta.previous ? 1 : weeklyXpMeta.current < weeklyXpMeta.previous ? -1 : 0;
 
-    return [
-      {
-        name: "You",
+    const baseList = globalLeaderboard.length ? globalLeaderboard : fallbackLeaderboard;
+
+    const merged = baseList.map((item) => {
+      const isCurrentUser =
+        item.email === email ||
+        item.isCurrentUser ||
+        item.name === "You" ||
+        (name && item.name.toLowerCase() === name.toLowerCase());
+
+      if (isCurrentUser) {
+        return {
+          ...item,
+          name: name || "You",
+          xp,
+          streak,
+          weeklyXp: weeklyXpMeta.current,
+          movement: currentMovement,
+          isCurrentUser: true
+        };
+      }
+      return {
+        ...item,
+        isCurrentUser: false
+      };
+    });
+
+    if (!merged.some((u) => u.isCurrentUser)) {
+      merged.push({
+        id: "currentUser",
+        name: name || "You",
         xp,
         streak,
         weeklyXp: weeklyXpMeta.current,
         movement: currentMovement,
         isCurrentUser: true
-      },
-      ...leaderboard
-    ]
+      });
+    }
+
+    return merged
       .map((item) => {
         const rank = getRankMeta(item.xp);
         return {
@@ -1279,8 +1443,8 @@ export function Dashboard() {
         };
       })
       .sort((left, right) => {
-        if (right.rankIndex !== left.rankIndex) return right.rankIndex - left.rankIndex;
         if (right.xp !== left.xp) return right.xp - left.xp;
+        if (right.streak !== left.streak) return right.streak - left.streak;
         return (right.weeklyXp || 0) - (left.weeklyXp || 0);
       })
       .map((item, index) => ({
@@ -1288,7 +1452,7 @@ export function Dashboard() {
         position: index + 1,
         isTopTier: index < 3
       }));
-  }, [streak, weeklyXpMeta.current, weeklyXpMeta.previous, xp]);
+  }, [globalLeaderboard, email, name, xp, streak, weeklyXpMeta.current, weeklyXpMeta.previous]);
 
   const currentUserEntry = useMemo(() => {
     return (
@@ -1347,25 +1511,23 @@ export function Dashboard() {
             onMouseLeave={() => setSidebarExpanded(false)}
             onFocusCapture={() => setSidebarExpanded(true)}
             onBlurCapture={() => setSidebarExpanded(false)}
-            className={`z-30 w-full overflow-hidden rounded-[24px] border border-white/[0.05] bg-white/[0.05] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[16px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-5 xl:h-[calc(100vh-2.5rem)] ${
-              sidebarExpanded ? "xl:w-[248px]" : "xl:w-[96px]"
-            }`}
-            style={{ zIndex: 40 }}
+            className={`z-30 w-full overflow-y-auto overflow-x-hidden scrollbar-none rounded-[24px] border border-white/[0.05] bg-white/[0.05] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-[16px] transition-[width] duration-200 xl:fixed xl:left-8 xl:top-5 xl:h-[calc(100vh-2.5rem)] ${sidebarExpanded ? "xl:w-[248px]" : "xl:w-[96px]"
+              }`}
+            style={{ zIndex: 40, scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             <div className="flex h-full flex-col">
-              <div className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-3 select-none hover:opacity-80 transition duration-150">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#1a1a1a] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <BoltIcon />
                 </div>
                 <div
-                  className={`min-w-0 overflow-hidden opacity-100 transition-all duration-200 ${
-                    sidebarExpanded ? "xl:max-w-[130px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
-                  }`}
+                  className={`min-w-0 overflow-hidden opacity-100 transition-all duration-200 ${sidebarExpanded ? "xl:max-w-[130px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+                    }`}
                 >
                   <p className={`text-lg text-white ${HEADING_CLASS}`}>VisualMind</p>
                   <p className={`${LABEL_CLASS} text-zinc-500`}>Learning OS</p>
                 </div>
-              </div>
+              </Link>
 
               <nav className="mt-8 space-y-2.5">
                 {sidebarLinks.map((item) => (
@@ -1373,12 +1535,12 @@ export function Dashboard() {
                 ))}
               </nav>
 
-              <div className="mt-8 flex flex-col items-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
+              <div className={`flex flex-col items-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px] transition-all duration-200 ${sidebarExpanded ? "mt-8 p-5" : "mt-4 p-2"
+                }`}>
                 <TodayRing value={todayProgress} expanded={sidebarExpanded} />
                 <p
-                  className={`mt-4 overflow-hidden text-center text-xs leading-5 text-zinc-400 transition-all duration-200 ${
-                    sidebarExpanded ? "xl:max-h-10 xl:opacity-100" : "xl:max-h-0 xl:opacity-0"
-                  }`}
+                  className={`mt-4 overflow-hidden text-center text-xs leading-5 text-zinc-400 transition-all duration-200 ${sidebarExpanded ? "xl:max-h-10 xl:opacity-100" : "xl:max-h-0 xl:opacity-0"
+                    }`}
                 >
                   Two wins down. Keep the streak alive.
                 </p>
@@ -1386,28 +1548,28 @@ export function Dashboard() {
 
               <Link
                 href="/ai-lab"
-                className={`mt-5 justify-center ${PRIMARY_BUTTON_CLASS}`}
+                className={`justify-center ${PRIMARY_BUTTON_CLASS} transition-all duration-200 ${sidebarExpanded ? "mt-5" : "mt-3"
+                  }`}
                 style={{ backgroundImage: BRAND_GRADIENT }}
               >
                 <SparkIcon className="h-4 w-4" />
                 <span
-                  className={`overflow-hidden opacity-100 transition-all duration-200 ${
-                    sidebarExpanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
-                  }`}
+                  className={`overflow-hidden opacity-100 transition-all duration-200 ${sidebarExpanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+                    }`}
                 >
                   AI Lab
                 </span>
               </Link>
 
-              <div className="mt-auto pt-8">
-                <div className="flex items-center gap-3 rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px]">
+              <div className={`mt-auto transition-all duration-200 ${sidebarExpanded ? "pt-8" : "pt-4"}`}>
+                <div className={`flex items-center rounded-[12px] border border-white/[0.05] bg-[#1a1a1a] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] backdrop-blur-[16px] transition-all duration-200 ${sidebarExpanded ? "p-4 gap-3" : "p-2 gap-0"
+                  }`}>
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-black text-sm font-semibold text-white">
                     N
                   </div>
                   <div
-                    className={`min-w-0 overflow-hidden opacity-100 transition-all duration-200 ${
-                      sidebarExpanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
-                    }`}
+                    className={`min-w-0 overflow-hidden opacity-100 transition-all duration-200 ${sidebarExpanded ? "xl:max-w-[120px] xl:opacity-100" : "xl:max-w-0 xl:opacity-0"
+                      }`}
                   >
                     <p className="text-sm font-semibold text-white">Operator</p>
                     <p className="text-xs text-zinc-500">{currentRank.title} / Deep work mode</p>
@@ -1421,292 +1583,309 @@ export function Dashboard() {
             className="transition-[padding,margin] duration-200 xl:ml-[112px] xl:pl-[var(--sidebar-offset)] xl:pr-[336px]"
             style={{ "--sidebar-offset": `${Math.max(sidebarWidth + SIDEBAR_GAP - MAIN_DASHBOARD_MARGIN, 0)}px` }}
           >
-          <motion.div
-            variants={sectionVariants}
-            initial="hidden"
-            animate="show"
-            className="z-10 min-w-0 space-y-5"
-          >
-            <motion.section variants={cardVariants} id="home">
-              <Surface className="overflow-hidden p-6 sm:p-8">
-                <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr] xl:gap-10">
-                  <div>
-                    <p className={`${LABEL_CLASS} leading-[1.2] text-zinc-500`}>Operational View</p>
-                    <h1 className={`mt-3 max-w-3xl text-4xl leading-[1.15] text-white sm:text-[3.5rem] ${HEADING_CLASS}`}>
-                      Production-grade learning, tuned for deep work.
-                    </h1>
-                    <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">
-                      VisualMind now prioritizes active paths, revision risk, and next actions over decorative noise.
-                    </p>
+            <motion.div
+              variants={sectionVariants}
+              initial="hidden"
+              animate="show"
+              className="z-10 min-w-0 space-y-5"
+            >
+              <motion.section variants={cardVariants} id="home">
+                <Surface className="overflow-hidden p-6 sm:p-8">
+                  <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr] xl:gap-10">
+                    <div>
+                      <p className={`${LABEL_CLASS} leading-[1.2] text-zinc-500`}>Operational View</p>
+                      <h1 className={`mt-3 max-w-3xl text-4xl leading-[1.15] text-white sm:text-[3.5rem] ${HEADING_CLASS}`}>
+                        Production-grade learning, tuned for deep work.
+                      </h1>
+                      <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">
+                        VisualMind now prioritizes active paths, revision risk, and next actions over decorative noise.
+                      </p>
 
-                    <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                      <StatPill
-                        label="Learning XP"
-                        value={<CountUpNumber value={xp} formatValue={formatNumber} />}
-                        detail={
-                          <>
-                            <span className="font-semibold text-white">{currentRank.title}</span>
-                            <span className="text-zinc-600"> / </span>
-                            <span className="text-cyan-100">+{formatNumber(weeklyXpMeta.current)} this week</span>
-                          </>
-                        }
-                        progressValue={currentRank.progress}
-                        footer={
-                          currentRank.nextRank
-                            ? `${formatNumber(currentRank.xpToNext)} XP to ${currentRank.nextRank.title}`
-                            : "Overmind tier secured"
-                        }
-                      />
-                      <Link
-                        href="/momentum-path"
-                        aria-label="View momentum path"
-                        className="block rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
-                      >
-                        <MomentumStatPill snapshot={momentumSnapshot} />
-                      </Link>
-                      <StatPill label="Lessons Closed" value={<CountUpNumber value={completedLessonsCount} />} />
-                    </div>
-                  </div>
-
-                  <div
-                    className="rounded-[24px] border border-white/[0.08] p-6 sm:p-7 text-white shadow-[0_20px_50px_rgba(79,172,254,0.2)]"
-                    style={{
-                      backgroundImage: BRAND_GRADIENT,
-                      filter: "drop-shadow(0 0 8px rgba(79, 172, 254, 0.3))"
-                    }}
-                  >
-                    <p className={`${LABEL_CLASS} text-white/70`}>Resume Path</p>
-                    <h2 className={`mt-3 text-3xl text-white sm:text-[2.8rem] ${HEADING_CLASS}`}>
-                      {resumeCourse ? `Resume ${resumeCourse.title}` : "Create your first path"}
-                    </h2>
-                    <p className="mt-4 text-sm leading-7 text-white/85">
-                      {resumeCourse
-                        ? `${resumeCourse.nextLessonTitle} is next. Stay inside the same path and protect recall momentum.`
-                        : "Generate a course in the AI Lab to unlock your active workspace."}
-                    </p>
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                      <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
-                        <p className={`${LABEL_CLASS} text-white/65`}>Progress</p>
-                        <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? `${resumeCourse.progress}%` : "0%"}</p>
-                      </div>
-                      <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
-                        <p className={`${LABEL_CLASS} text-white/65`}>Next Lesson</p>
-                        <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? resumeCourse.nextLessonTitle : "Not started"}</p>
-                      </div>
-                      <div className="rounded-[12px] bg-white/14 px-4 py-3 backdrop-blur-md">
-                        <p className={`${LABEL_CLASS} text-white/65`}>Time Left</p>
-                        <p className="mt-2 text-lg font-bold text-white">{resumeCourse ? resumeCourse.timeRemaining : "0 min"}</p>
-                      </div>
-                    </div>
-
-                    {resumeCourse ? (
-                      <>
-                        <div className="mt-6">
-                          <GlowBar value={resumeCourse.progress} trackClassName="bg-white/20" />
-                        </div>
+                      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                        <StatPill
+                          label="Learning XP"
+                          value={<CountUpNumber value={xp} formatValue={formatNumber} />}
+                          detail={
+                            <>
+                              <span className="font-semibold text-white">{currentRank.title}</span>
+                              <span className="text-zinc-600"> / </span>
+                              <span className="text-slate-900">+{formatNumber(weeklyXpMeta.current)} this week</span>
+                            </>
+                          }
+                          progressValue={currentRank.progress}
+                          footer={
+                            currentRank.nextRank
+                              ? `${formatNumber(currentRank.xpToNext)} XP to ${currentRank.nextRank.title}`
+                              : "Overmind tier secured"
+                          }
+                        />
                         <Link
-                          href={`/courses/${resumeCourse.id}`}
+                          href="/momentum-path"
+                          aria-label="View momentum path"
+                          className="block rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+                        >
+                          <MomentumStatPill snapshot={momentumSnapshot} />
+                        </Link>
+                        <StatPill label="Lessons Closed" value={<CountUpNumber value={completedLessonsCount} />} />
+                      </div>
+                    </div>
+
+                    <div
+                      className="rounded-[24px] border border-white/[0.08] p-6 sm:p-7 text-slate-900 shadow-[0_20px_50px_rgba(168,229,253,0.3)]"
+                      style={{
+                        backgroundImage: BRAND_GRADIENT,
+                        filter: "drop-shadow(0 0 8px rgba(79, 172, 254, 0.3))"
+                      }}
+                    >
+                      <p className={`${LABEL_CLASS} text-slate-800/80`}>Resume Path</p>
+                      <h2 className={`mt-3 text-3xl text-slate-900 sm:text-[2.8rem] ${HEADING_CLASS}`}>
+                        {resumeCourse ? `Resume ${resumeCourse.title}` : "Create your first path"}
+                      </h2>
+                      <p className="mt-4 text-sm leading-7 text-slate-800">
+                        {resumeCourse
+                          ? `${resumeCourse.nextLessonTitle} is next. Stay inside the same path and protect recall momentum.`
+                          : "Generate a course in the AI Lab to unlock your active workspace."}
+                      </p>
+
+                      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-[12px] bg-slate-900/5 px-3 py-3 backdrop-blur-md">
+                          <p className={`${LABEL_CLASS} text-slate-600`}>Progress</p>
+                          <p className="mt-2 text-sm font-bold text-slate-900">{resumeCourse ? `${resumeCourse.progress}%` : "0%"}</p>
+                        </div>
+                        <div className="rounded-[12px] bg-slate-900/5 px-3 py-3 backdrop-blur-md">
+                          <p className={`${LABEL_CLASS} text-slate-600`}>Next Lesson</p>
+                          <p className="mt-2 text-sm font-bold leading-tight line-clamp-2 break-words text-slate-900">{resumeCourse ? resumeCourse.nextLessonTitle : "Not started"}</p>
+                        </div>
+                        <div className="rounded-[12px] bg-slate-900/5 px-3 py-3 backdrop-blur-md">
+                          <p className={`${LABEL_CLASS} text-slate-600`}>Time Left</p>
+                          <p className="mt-2 text-sm font-bold text-slate-900">{resumeCourse ? resumeCourse.timeRemaining : "0 min"}</p>
+                        </div>
+                      </div>
+
+                      {resumeCourse ? (
+                        <>
+                          <div className="mt-6">
+                            <GlowBar value={resumeCourse.progress} trackClassName="bg-slate-900/10" />
+                          </div>
+                          <Link
+                            href={`/courses/${resumeCourse.id}`}
+                            className={`${PRIMARY_BUTTON_CLASS} mt-6 px-5 py-3`}
+                            style={{
+                              backgroundImage: BRAND_GRADIENT,
+                              boxShadow: "0 0 24px rgba(79,172,254,0.2)"
+                            }}
+                          >
+                            <PlayIcon className="h-4 w-4" />
+                            Resume
+                          </Link>
+                        </>
+                      ) : (
+                        <Link
+                          href="/ai-lab"
                           className={`${PRIMARY_BUTTON_CLASS} mt-6 px-5 py-3`}
                           style={{
                             backgroundImage: BRAND_GRADIENT,
                             boxShadow: "0 0 24px rgba(79,172,254,0.2)"
                           }}
                         >
-                          <PlayIcon className="h-4 w-4" />
-                          Resume
+                          <SparkIcon className="h-4 w-4" />
+                          Open AI Lab
                         </Link>
-                      </>
-                    ) : (
+                      )}
+                    </div>
+                  </div>
+                </Surface>
+              </motion.section>
+
+              <motion.section variants={cardVariants} id="courses">
+                <Surface className="p-6 sm:p-8">
+                  <SectionKick
+                    label="Active Courses"
+                    title="Keep every live path visible."
+                    detail="Descriptions are stripped back so the next lesson, progress, and time cost stay instantly scannable."
+                  />
+
+                  {activeCourses.length ? (
+                    <div className="mt-8 grid gap-5 lg:grid-cols-2">
+                      {activeCourses.map((course, index) => (
+                        <CourseCard key={course.id} course={course} delay={index * 0.05} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`mt-8 rounded-[24px] bg-[#111111] p-6 sm:p-7 ${GLASS_CARD_CLASS}`}>
+                      <p className="text-lg font-bold text-white">No active paths yet.</p>
+                      <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
+                        Generate your first AI course and this workspace will fill with progress bars, next lessons, and recall signals.
+                      </p>
                       <Link
                         href="/ai-lab"
-                        className={`${PRIMARY_BUTTON_CLASS} mt-6 px-5 py-3`}
-                        style={{
-                          backgroundImage: BRAND_GRADIENT,
-                          boxShadow: "0 0 24px rgba(79,172,254,0.2)"
-                        }}
+                        className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
+                        style={{ backgroundImage: BRAND_GRADIENT }}
                       >
-                        <SparkIcon className="h-4 w-4" />
-                        Open AI Lab
+                        Generate a path
                       </Link>
-                    )}
-                  </div>
-                </div>
-              </Surface>
-            </motion.section>
+                    </div>
+                  )}
+                </Surface>
+              </motion.section>
 
-            <motion.section variants={cardVariants} id="courses">
-              <Surface className="p-6 sm:p-8">
-                <SectionKick
-                  label="Active Courses"
-                  title="Keep every live path visible."
-                  detail="Descriptions are stripped back so the next lesson, progress, and time cost stay instantly scannable."
-                />
-
-                {visibleCourses.length ? (
-                  <div className="mt-8 grid gap-5 lg:grid-cols-2">
-                    {visibleCourses.map((course, index) => (
-                      <CourseCard key={course.id} course={course} delay={index * 0.05} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className={`mt-8 rounded-[24px] bg-[#111111] p-6 sm:p-7 ${GLASS_CARD_CLASS}`}>
-                    <p className="text-lg font-bold text-white">No active paths yet.</p>
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
-                      Generate your first AI course and this workspace will fill with progress bars, next lessons, and recall signals.
-                    </p>
-                    <Link
-                      href="/ai-lab"
-                      className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
-                      style={{ backgroundImage: BRAND_GRADIENT }}
-                    >
-                      Generate a path
-                    </Link>
-                  </div>
-                )}
-              </Surface>
-            </motion.section>
-
-            <motion.section variants={cardVariants} id="analytics">
-              <Surface className="p-6 sm:p-8">
-                <SectionKick
-                  label="Analytics"
-                  title="Focus and retention in one pass."
-                  detail="Progress momentum stays bright. Risk signals stay obvious."
-                />
-
-                <div className="mt-8 grid gap-5 2xl:grid-cols-[1.03fr_0.97fr] 2xl:gap-6">
-                  <LearningBars data={weeklyLearningData} />
-
-                  <div className="space-y-5">
-                    <Surface layer={3} className="p-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className={`${LABEL_CLASS} text-zinc-500`}>Engagement Score</p>
-                          <p className={`mt-2 text-3xl text-white ${HEADING_CLASS}`}>
-                            {engagementMetric ? <CountUpNumber value={engagementMetric.value} suffix="%" /> : "—"}
-                          </p>
-                        </div>
-                        <span className={`rounded-[6px] border px-3 py-1 text-xs font-semibold ${engagementMetric?.trend.badgeClass || "border-white/10 bg-white/[0.04] text-zinc-400"}`}>
-                          {engagementMetric ? `${engagementMetric.trend.arrow} ${engagementMetric.trend.emphasis}` : "Start a lesson"}
-                        </span>
-                      </div>
-                      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                        <StatPill
-                          label="Focus Minutes"
-                          value={`${focusMinutes}m`}
-                          tone="text-zinc-100"
-                        />
-                        <StatPill
-                          label="Active Ratio"
-                          value={engagementMetric ? `${clampPercent(engagementMetric.activeRatio * 100)}%` : "0%"}
-                          tone="text-zinc-100"
-                        />
-                      </div>
-                    </Surface>
-
-                    <RecallWidget
-                      metric={recallMetric}
-                      resumeHref={resumeCourse ? `/courses/${resumeCourse.id}` : "/ai-lab"}
+              {completedHistoryCourses.length > 0 && (
+                <motion.section variants={cardVariants} id="completed-courses">
+                  <Surface className="p-6 sm:p-8">
+                    <SectionKick
+                      label="Completed History"
+                      title="Paths you've fully mastered."
+                      detail="Review your finished courses and recall completed material anytime."
                     />
+                    <div className="mt-8 grid gap-5 lg:grid-cols-2 opacity-80 transition-opacity duration-300 hover:opacity-100">
+                      {completedHistoryCourses.map((course, index) => (
+                        <CourseCard key={course.id} course={course} delay={index * 0.05} isCompleted={true} />
+                      ))}
+                    </div>
+                  </Surface>
+                </motion.section>
+              )}
+
+              <motion.section variants={cardVariants} id="analytics">
+                <Surface className="p-6 sm:p-8">
+                  <SectionKick
+                    label="Analytics"
+                    title="Focus and retention in one pass."
+                    detail="Progress momentum stays bright. Risk signals stay obvious."
+                  />
+
+                  <div className="mt-8 grid gap-5 2xl:grid-cols-[1.03fr_0.97fr] 2xl:gap-6">
+                    <LearningBars data={weeklyLearningData} />
+
+                    <div className="space-y-5">
+                      <Surface layer={3} className="p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className={`${LABEL_CLASS} text-zinc-500`}>Engagement Score</p>
+                            <p className={`mt-2 text-3xl text-white ${HEADING_CLASS}`}>
+                              {engagementMetric ? <CountUpNumber value={engagementMetric.value} suffix="%" /> : "—"}
+                            </p>
+                          </div>
+                          <span className={`rounded-[6px] border px-3 py-1 text-xs font-semibold ${engagementMetric?.trend.badgeClass || "border-white/10 bg-white/[0.04] text-zinc-400"}`}>
+                            {engagementMetric ? `${engagementMetric.trend.arrow} ${engagementMetric.trend.emphasis}` : "Start a lesson"}
+                          </span>
+                        </div>
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                          <StatPill
+                            label="Focus Minutes"
+                            value={`${focusMinutes}m`}
+                            tone="text-zinc-100"
+                          />
+                          <StatPill
+                            label="Active Ratio"
+                            value={engagementMetric ? `${clampPercent(engagementMetric.activeRatio * 100)}%` : "0%"}
+                            tone="text-zinc-100"
+                          />
+                        </div>
+                      </Surface>
+
+                      <RecallWidget
+                        metric={recallMetric}
+                        resumeHref={resumeCourse ? `/courses/${resumeCourse.id}` : "/ai-lab"}
+                      />
+                    </div>
                   </div>
-                </div>
-              </Surface>
-            </motion.section>
+                </Surface>
+              </motion.section>
 
-            <motion.section variants={cardVariants} id="activity">
-              <Surface className="p-6 sm:p-8">
-                <SectionKick
-                  label="Activity Feed"
-                  title="What moved most recently."
-                  detail="Repeated actions are collapsed into sprints so the feed stays useful under pressure."
-                />
+              <motion.section variants={cardVariants} id="activity">
+                <Surface className="p-6 sm:p-8">
+                  <SectionKick
+                    label="Activity Feed"
+                    title="What moved most recently."
+                    detail="Repeated actions are collapsed into sprints so the feed stays useful under pressure."
+                  />
 
-                {groupedActivities.length ? (
-                  <div className="mt-8 grid gap-5 lg:grid-cols-2">
-                    {groupedActivities.map((item, index) => (
-                      <ActivityRow key={item.id} item={item} index={index} />
+                  {groupedActivities.length ? (
+                    <div className="mt-8 grid gap-5 lg:grid-cols-2">
+                      {groupedActivities.map((item, index) => (
+                        <ActivityRow key={item.id} item={item} index={index} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`mt-8 rounded-[24px] bg-[#111111] p-6 text-sm leading-6 text-zinc-400 ${GLASS_CARD_CLASS}`}>
+                      Activity appears here after you generate a course, open a lesson, or clear a quiz.
+                    </div>
+                  )}
+                </Surface>
+              </motion.section>
+            </motion.div>
+
+            <motion.aside variants={sectionVariants} initial="hidden" animate="show" className="z-10 mt-5 space-y-5 xl:fixed xl:right-8 xl:top-5 xl:w-[312px]">
+              <motion.section variants={cardVariants}>
+                <Surface className="bg-white/[0.05] p-6">
+                  <p className={`${LABEL_CLASS} text-zinc-500`}>Daily Plan</p>
+                  <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{todayProgress}% Today</h2>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">Small wins, high carry-over.</p>
+                  <div className="mt-5">
+                    <GlowBar value={todayProgress} />
+                  </div>
+
+                  <div className="mt-5 space-y-3.5">
+                    {dailyGoals.map((goal) => (
+                      <GoalRow key={goal.id} goal={goal} onToggle={toggleGoal} />
                     ))}
                   </div>
-                ) : (
-                  <div className={`mt-8 rounded-[24px] bg-[#111111] p-6 text-sm leading-6 text-zinc-400 ${GLASS_CARD_CLASS}`}>
-                    Activity appears here after you generate a course, open a lesson, or clear a quiz.
-                  </div>
-                )}
-              </Surface>
-            </motion.section>
-          </motion.div>
+                </Surface>
+              </motion.section>
 
-          <motion.aside variants={sectionVariants} initial="hidden" animate="show" className="z-10 mt-5 space-y-5 xl:fixed xl:right-8 xl:top-5 xl:w-[312px]">
-            <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-6">
-                <p className={`${LABEL_CLASS} text-zinc-500`}>Daily Plan</p>
-                <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>{todayProgress}% Today</h2>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">Small wins, high carry-over.</p>
-                <div className="mt-5">
-                  <GlowBar value={todayProgress} />
-                </div>
+              <motion.section variants={cardVariants}>
+                <Link
+                  href="/ranks-roadmap"
+                  aria-label="View rank roadmap"
+                  className="block rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+                >
+                  <PersonalProgressCard summary={currentUserEntry} />
+                </Link>
+              </motion.section>
 
-                <div className="mt-5 space-y-3.5">
-                  {dailyGoals.map((goal) => (
-                    <GoalRow key={goal.id} goal={goal} onToggle={toggleGoal} />
+              <motion.section variants={cardVariants}>
+                <Surface className="bg-white/[0.05] p-6">
+                  <p className={`${LABEL_CLASS} text-zinc-500`}>AI Workflow</p>
+                  <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>Refine another concept.</h2>
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">
+                    Use the lab when you need a new learning path or a tighter concept breakdown.
+                  </p>
+                  <Link
+                    href="/ai-lab"
+                    className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
+                    style={{ backgroundImage: BRAND_GRADIENT }}
+                  >
+                    <SparkIcon className="h-4 w-4" />
+                    Open AI Lab
+                  </Link>
+                </Surface>
+              </motion.section>
+            </motion.aside>
+
+            <motion.section variants={cardVariants} id="social" className="mt-5">
+              <Surface className="p-6 sm:p-8">
+                <SectionKick
+                  label="Social Ranking"
+                  title="Compare progression without losing focus."
+                  detail="Your personal momentum stays in the sidebar. The wider leaderboard keeps social context spacious, readable, and secondary to learning flow."
+                  action={
+                    <div className="rounded-[14px] border border-cyan-400/15 bg-cyan-500/[0.06] px-4 py-3 text-left shadow-[0_0_18px_rgba(0,242,254,0.06)]">
+                      <p className={`${LABEL_CLASS} text-slate-900/70`}>Your Standing</p>
+                      <p className="mt-2 text-sm font-semibold text-white">
+                        #{currentUserEntry.position} globally / {currentUserEntry.rankTitle}
+                      </p>
+                    </div>
+                  }
+                />
+
+                <div className="mt-8 space-y-4">
+                  {leaderboardEntries.map((item, index) => (
+                    <SocialRow key={`${item.name}-${item.position}`} item={item} index={index} />
                   ))}
                 </div>
               </Surface>
             </motion.section>
-
-            <motion.section variants={cardVariants}>
-              <Link
-                href="/ranks-roadmap"
-                aria-label="View rank roadmap"
-                className="block rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
-              >
-                <PersonalProgressCard summary={currentUserEntry} />
-              </Link>
-            </motion.section>
-
-            <motion.section variants={cardVariants}>
-              <Surface className="bg-white/[0.05] p-6">
-                <p className={`${LABEL_CLASS} text-zinc-500`}>AI Workflow</p>
-                <h2 className={`mt-2 text-2xl text-white ${HEADING_CLASS}`}>Refine another concept.</h2>
-                <p className="mt-3 text-sm leading-7 text-zinc-300">
-                  Use the lab when you need a new learning path or a tighter concept breakdown.
-                </p>
-                <Link
-                  href="/ai-lab"
-                  className={`mt-5 ${PRIMARY_BUTTON_CLASS}`}
-                  style={{ backgroundImage: BRAND_GRADIENT }}
-                >
-                  <SparkIcon className="h-4 w-4" />
-                  Open AI Lab
-                </Link>
-              </Surface>
-            </motion.section>
-          </motion.aside>
-
-          <motion.section variants={cardVariants} id="social" className="mt-5">
-            <Surface className="p-6 sm:p-8">
-              <SectionKick
-                label="Social Ranking"
-                title="Compare progression without losing focus."
-                detail="Your personal momentum stays in the sidebar. The wider leaderboard keeps social context spacious, readable, and secondary to learning flow."
-                action={
-                  <div className="rounded-[14px] border border-cyan-400/15 bg-cyan-500/[0.06] px-4 py-3 text-left shadow-[0_0_18px_rgba(0,242,254,0.06)]">
-                    <p className={`${LABEL_CLASS} text-cyan-100/70`}>Your Standing</p>
-                    <p className="mt-2 text-sm font-semibold text-white">
-                      #{currentUserEntry.position} globally / {currentUserEntry.rankTitle}
-                    </p>
-                  </div>
-                }
-              />
-
-              <div className="mt-8 space-y-4">
-                {leaderboardEntries.map((item, index) => (
-                  <SocialRow key={`${item.name}-${item.position}`} item={item} index={index} />
-                ))}
-              </div>
-            </Surface>
-          </motion.section>
           </div>
         </div>
       </div>

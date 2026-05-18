@@ -1,12 +1,62 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AnimatedButton } from "@/components/animation-kit";
 import { useTheme } from "@/components/theme-provider";
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUser() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store"
+        });
+        const data = await response.json();
+
+        if (active) {
+          setUser(data.user || null);
+        }
+      } catch {
+        if (active) {
+          setUser(null);
+        }
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+      setUser(null);
+      router.push("/");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 px-4 py-4 sm:px-8">
@@ -45,9 +95,26 @@ export function Navbar() {
           >
             {theme === "dark" ? "Light" : "Dark"}
           </motion.button>
-          <AnimatedButton href="/auth/signup" className="px-4 py-2 text-sm">
-            Start
-          </AnimatedButton>
+          {user ? (
+            <>
+              <AnimatedButton href="/dashboard" className="px-4 py-2 text-sm">
+                Dashboard
+              </AnimatedButton>
+              <motion.button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+              >
+                {loggingOut ? "Signing out..." : "Logout"}
+              </motion.button>
+            </>
+          ) : (
+            <AnimatedButton href="/auth/signup" className="px-4 py-2 text-sm">
+              Start
+            </AnimatedButton>
+          )}
         </div>
       </div>
     </header>

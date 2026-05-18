@@ -176,13 +176,13 @@ function MomentumMilestone({ item, index }) {
             animate={
               item.isCurrent
                 ? {
-                    scale: [1, 1.08, 1],
-                    boxShadow: [
-                      "0 0 0 rgba(96,165,250,0.16)",
-                      "0 0 26px rgba(129,140,248,0.34)",
-                      "0 0 0 rgba(96,165,250,0.16)"
-                    ]
-                  }
+                  scale: [1, 1.08, 1],
+                  boxShadow: [
+                    "0 0 0 rgba(96,165,250,0.16)",
+                    "0 0 26px rgba(129,140,248,0.34)",
+                    "0 0 0 rgba(96,165,250,0.16)"
+                  ]
+                }
                 : {}
             }
             transition={{ duration: 2.6, repeat: item.isCurrent ? Infinity : 0, ease: "easeInOut" }}

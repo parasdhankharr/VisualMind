@@ -2,19 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { AnimatedButton, FadeUp } from "@/components/animation-kit";
 
 export function AuthForm({ mode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(searchParams.get("error") || "");
 
   async function handleSubmit(event) {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
 
     const form = new FormData(event.currentTarget);
     const payload = Object.fromEntries(form.entries());
@@ -31,10 +34,21 @@ export function AuthForm({ mode }) {
       return;
     }
 
-    router.push("/dashboard");
+    if (data.requiresEmailConfirmation) {
+      setNotice("Check your email to confirm your account, then log in.");
+      return;
+    }
+
+    const nextPath = searchParams.get("next");
+    router.push(nextPath || "/dashboard");
+    router.refresh();
   }
 
   const isSignup = mode === "signup";
+  const next = searchParams.get("next");
+  const authLinkHref = `${isSignup ? "/auth/login" : "/auth/signup"}${
+    next ? `?next=${encodeURIComponent(next)}` : ""
+  }`;
 
   return (
     <div className="min-h-screen bg-midnight px-5 py-28 text-white">
@@ -93,6 +107,9 @@ export function AuthForm({ mode }) {
         </label>
         </FadeUp>
         {error && <p className="rounded-2xl bg-rose-500/15 p-3 text-sm text-rose-200">{error}</p>}
+        {notice && !error && (
+          <p className="rounded-2xl bg-cyan-500/15 p-3 text-sm text-cyan-100">{notice}</p>
+        )}
         <AnimatedButton
           as="button"
           disabled={loading}
@@ -102,7 +119,7 @@ export function AuthForm({ mode }) {
         </AnimatedButton>
         <p className="text-center text-sm text-slate-400">
           {isSignup ? "Already have an account?" : "New here?"}{" "}
-          <Link className="text-cyan-200" href={isSignup ? "/auth/login" : "/auth/signup"}>
+          <Link className="text-cyan-200" href={authLinkHref}>
             {isSignup ? "Log in" : "Create one"}
           </Link>
         </p>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Reveal } from "@/components/motion-wrapper";
 import { AnimatedButton, HoverCard, Stagger, StaggerItem } from "@/components/animation-kit";
+import Prism from "@/components/Prism";
 
 const stats = [
   ["68%", "students multitask during online lectures"],
@@ -157,9 +158,8 @@ function VisualLearningEngineDemo() {
                   opacity: step === index ? 1 : 0.55,
                   scale: step === index ? 1.03 : 1
                 }}
-                className={`rounded-2xl border px-3 py-2 text-center font-bold ${
-                  step === index ? "border-cyan-300/60 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/5 text-slate-400"
-                }`}
+                className={`rounded-2xl border px-3 py-2 text-center font-bold ${step === index ? "border-cyan-300/60 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/5 text-slate-400"
+                  }`}
               >
                 {label}
               </motion.div>
@@ -304,9 +304,8 @@ function VisualLearningEngineDemo() {
                 }}
                 whileHover={{ y: -4, scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${
-                  mode === label ? "border-cyan-300/60 bg-cyan-300/20 text-cyan-100" : "border-white/10 bg-white/10 text-slate-300"
-                }`}
+                className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${mode === label ? "border-cyan-300/60 bg-cyan-300/20 text-cyan-100" : "border-white/10 bg-white/10 text-slate-300"
+                  }`}
               >
                 <span className="block text-xs text-slate-400">{demoModes[label].stat}</span>
                 {label}
@@ -448,30 +447,41 @@ export function LandingPage() {
   return (
     <div className="overflow-hidden bg-midnight text-white">
       <section className="relative flex min-h-screen items-center px-5 pt-28 sm:px-8">
-        <div className="absolute inset-0 bg-hero-grid bg-[length:44px_44px] opacity-50" />
-        <motion.div
-          className="absolute left-1/2 top-24 h-80 w-80 rounded-full bg-cyan-400/25 blur-3xl"
-          animate={{ y: [0, 35, 0], x: [0, -28, 0] }}
-          transition={{ duration: 9, repeat: Infinity }}
-        />
+        <div className="absolute inset-0 bg-hero-grid bg-[length:44px_44px] opacity-50 pointer-events-none" />
+        
+        <div className="absolute inset-0 z-0 opacity-60 mix-blend-screen">
+          <Prism
+            animationType="hover"
+            timeScale={0.4}
+            height={4.0}
+            baseWidth={6.0}
+            scale={2.5}
+            hueShift={0.1}
+            colorFrequency={1.2}
+            noise={0.3}
+            glow={1.2}
+            offset={{ x: 0, y: -0.1 }}
+          />
+        </div>
+
         <motion.div
           className="absolute bottom-20 right-10 h-96 w-96 rounded-full bg-violet-500/30 blur-3xl"
           animate={{ y: [0, -42, 0], scale: [1, 1.12, 1] }}
           transition={{ duration: 10, repeat: Infinity }}
         />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center text-center">
           <Reveal>
             <p className="mb-5 inline-flex rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-cyan-100">
               Built for students with short attention windows
             </p>
-            <h1 className="max-w-4xl text-balance text-6xl font-black leading-none tracking-tight sm:text-7xl lg:text-8xl">
+            <h1 className="text-balance text-6xl font-black leading-none tracking-tight sm:text-7xl lg:text-8xl">
               Learn Smarter, Not Harder
             </h1>
-            <p className="mt-7 max-w-2xl text-xl text-slate-300">
+            <p className="mx-auto mt-7 max-w-2xl text-xl text-slate-300">
               Turn boring content into visual learning with animations, infographics,
               micro-lessons, quizzes, XP, streaks, and instant feedback.
             </p>
-            <div className="mt-9 flex flex-wrap gap-4">
+            <div className="mt-9 flex flex-wrap justify-center gap-4">
               <AnimatedButton href="/auth/signup">
                 Start Learning
               </AnimatedButton>
@@ -480,29 +490,33 @@ export function LandingPage() {
               </AnimatedButton>
             </div>
           </Reveal>
-
-          <VisualLearningEngineDemo />
         </div>
       </section>
 
       <section className="px-5 py-24 sm:px-8">
-        <div className="mx-auto max-w-7xl">
-          <Reveal>
-            <p className="text-sm font-bold uppercase text-cyan-300">The problem</p>
-            <h2 className="mt-3 max-w-4xl text-4xl font-black sm:text-6xl">
-              Text-heavy learning loses attention before understanding begins.
-            </h2>
-          </Reveal>
-          <Stagger className="mt-12 grid gap-4 md:grid-cols-3">
-            {stats.map(([value, label], index) => (
-              <StaggerItem key={value} variant={index === 1 ? "scale-in" : "fade-up"}>
-                <HoverCard className="glass glow-ring rounded-3xl p-7">
-                  <p className="text-5xl font-black text-white">{value}</p>
-                  <p className="mt-3 text-slate-300">{label}</p>
-                </HoverCard>
-              </StaggerItem>
-            ))}
-          </Stagger>
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
+          <div>
+            <Reveal>
+              <p className="text-sm font-bold uppercase text-cyan-300">The problem</p>
+              <h2 className="mt-3 text-4xl font-black sm:text-5xl">
+                Text-heavy learning loses attention before understanding begins.
+              </h2>
+            </Reveal>
+            <Stagger className="mt-10 grid gap-4 sm:grid-cols-2">
+              {stats.map(([value, label], index) => (
+                <StaggerItem key={value} variant={index === 1 ? "scale-in" : "fade-up"} className={index === 2 ? "sm:col-span-2" : ""}>
+                  <HoverCard className="glass glow-ring h-full rounded-3xl p-7">
+                    <p className="text-4xl font-black text-white">{value}</p>
+                    <p className="mt-2 text-sm text-slate-300">{label}</p>
+                  </HoverCard>
+                </StaggerItem>
+              ))}
+            </Stagger>
+          </div>
+          
+          <div className="relative">
+            <VisualLearningEngineDemo />
+          </div>
         </div>
       </section>
 
@@ -543,12 +557,12 @@ export function LandingPage() {
             (feature, index) => (
               <Reveal key={feature} delay={index * 0.06} variant={index % 2 ? "slide-left" : "slide-right"}>
                 <HoverCard className="glow-ring min-h-80 rounded-[2rem] bg-gradient-to-br from-white/15 to-white/5 p-8">
-                <span className="text-sm text-cyan-200">Feature 0{index + 1}</span>
-                <h3 className="mt-8 text-4xl font-black">{feature}</h3>
-                <p className="mt-4 max-w-md text-slate-300">
-                  Premium interactions, loading states, and responsive layouts keep learners
-                  moving from curiosity to completion.
-                </p>
+                  <span className="text-sm text-cyan-200">Feature 0{index + 1}</span>
+                  <h3 className="mt-8 text-4xl font-black">{feature}</h3>
+                  <p className="mt-4 max-w-md text-slate-300">
+                    Premium interactions, loading states, and responsive layouts keep learners
+                    moving from curiosity to completion.
+                  </p>
                 </HoverCard>
               </Reveal>
             )
@@ -565,8 +579,8 @@ export function LandingPage() {
             {testimonials.map((quote, index) => (
               <Reveal key={quote} delay={index * 0.08} variant="scale-in">
                 <HoverCard className="glass glow-ring rounded-3xl p-7">
-                <p className="text-xl font-bold">"{quote}"</p>
-                <p className="mt-6 text-sm text-slate-400">Student beta tester</p>
+                  <p className="text-xl font-bold">"{quote}"</p>
+                  <p className="mt-6 text-sm text-slate-400">Student beta tester</p>
                 </HoverCard>
               </Reveal>
             ))}
@@ -579,15 +593,15 @@ export function LandingPage() {
           {["Starter", "Scholar", "Campus"].map((plan, index) => (
             <Reveal key={plan} delay={index * 0.08} variant="scale-in">
               <HoverCard className="glass glow-ring rounded-3xl p-7">
-              <h3 className="text-3xl font-black">{plan}</h3>
-              <p className="mt-3 text-slate-300">
-                {index === 0 ? "Free" : index === 1 ? "$9/mo" : "Custom"}
-              </p>
-              <ul className="mt-8 space-y-3 text-sm text-slate-300">
-                <li>Visual courses</li>
-                <li>Quiz attempts</li>
-                <li>Progress tracking</li>
-              </ul>
+                <h3 className="text-3xl font-black">{plan}</h3>
+                <p className="mt-3 text-slate-300">
+                  {index === 0 ? "Free" : index === 1 ? "$9/mo" : "Custom"}
+                </p>
+                <ul className="mt-8 space-y-3 text-sm text-slate-300">
+                  <li>Visual courses</li>
+                  <li>Quiz attempts</li>
+                  <li>Progress tracking</li>
+                </ul>
               </HoverCard>
             </Reveal>
           ))}

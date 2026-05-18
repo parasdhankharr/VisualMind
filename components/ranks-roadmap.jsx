@@ -138,11 +138,10 @@ function RankMilestone({ item, index }) {
                   opacity: [0.55, 0.9, 0.55]
                 }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-                className={`pointer-events-none absolute inset-0 ${
-                  isLegendary
-                    ? "bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.18),transparent_46%)]"
-                    : "bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.14),transparent_44%)]"
-                }`}
+                className={`pointer-events-none absolute inset-0 ${isLegendary
+                  ? "bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.18),transparent_46%)]"
+                  : "bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.14),transparent_44%)]"
+                  }`}
               />
             ) : null}
 
@@ -170,13 +169,13 @@ function RankMilestone({ item, index }) {
             animate={
               item.isCurrent
                 ? {
-                    scale: [1, 1.08, 1],
-                    boxShadow: [
-                      "0 0 0 rgba(0,242,254,0.2)",
-                      "0 0 24px rgba(0,242,254,0.45)",
-                      "0 0 0 rgba(0,242,254,0.2)"
-                    ]
-                  }
+                  scale: [1, 1.08, 1],
+                  boxShadow: [
+                    "0 0 0 rgba(0,242,254,0.2)",
+                    "0 0 24px rgba(0,242,254,0.45)",
+                    "0 0 0 rgba(0,242,254,0.2)"
+                  ]
+                }
                 : {}
             }
             transition={{ duration: 2.4, repeat: item.isCurrent ? Infinity : 0, ease: "easeInOut" }}

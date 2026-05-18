@@ -1,8 +1,6 @@
-import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import { setAuthCookie, signToken } from "@/lib/auth";
-import User from "@/models/User";
+import { createClient } from "@/lib/supabase/server";
+import { syncAuthUserProfile } from "@/lib/user-profile";
 
 export async function POST(request) {
   try {
@@ -15,20 +13,31 @@ export async function POST(request) {
       );
     }
 
-    await connectDB();
-    const existing = await User.findOne({ email });
+    const origin = new URL(request.url).origin;
+    const supabase = await createClient();
+    const {
+      data: { user, session },
+      error
+    } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+        emailRedirectTo: `${origin}/auth/confirm?next=/dashboard`
+      }
+    });
 
-    if (existing) {
-      return NextResponse.json({ message: "Email is already registered." }, { status: 409 });
+    if (error) {
+      console.error("Supabase Signup Error Details:", error);
+      const status = error.message.toLowerCase().includes("already") ? 409 : 400;
+      return NextResponse.json({ message: error.message }, { status });
     }
 
-    const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashed });
-    const token = signToken({ id: user._id.toString(), name: user.name, email: user.email });
-    await setAuthCookie(token);
+    const profile = user ? await syncAuthUserProfile(user) : null;
 
     return NextResponse.json({
-      user: { id: user._id, name: user.name, email: user.email, xp: user.xp, streak: user.streak }
+      requiresEmailConfirmation: !session,
+      user: profile
     });
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });

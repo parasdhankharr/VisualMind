@@ -65,6 +65,8 @@ const XP_REWARDS = {
 export const useLearningStore = create(
   persist(
     (set, get) => ({
+      name: "Learner",
+      email: "",
       completedLessons: {},
       xp: 0,
       streak: 0,
@@ -83,6 +85,140 @@ export const useLearningStore = create(
         if (!amount) return;
         set((state) => ({
           xp: state.xp + amount
+        }));
+      },
+      hydrateStore: (profile, progressList) => {
+        if (!profile) return;
+        set((state) => {
+          const rawBadges = Array.isArray(profile.badges) ? profile.badges : [];
+          const badges = [];
+          
+          let longestStreak = profile.longestStreak ?? state.longestStreak ?? 0;
+          let activeDays = Array.isArray(state.activeDays) ? [...state.activeDays] : [];
+          let activities = Array.isArray(state.activities) ? [...state.activities] : [];
+          let lessonSessions = Array.isArray(state.lessonSessions) ? [...state.lessonSessions] : [];
+          let quizAttempts = Array.isArray(state.quizAttempts) ? [...state.quizAttempts] : [];
+          let generatedCourses = Array.isArray(state.generatedCourses) ? [...state.generatedCourses] : [];
+          let completedLessons = { ...state.completedLessons };
+          let courseProgress = { ...state.courseProgress };
+
+          rawBadges.forEach((item) => {
+            if (typeof item === "string") {
+              if (item.startsWith("__longestStreak__:")) {
+                longestStreak = Math.max(longestStreak, Number(item.split(":")[1]) || 0);
+              } else if (item.startsWith("__activeDays__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(15));
+                  if (parsed.length > activeDays.length) activeDays = parsed;
+                } catch (_) {}
+              } else if (item.startsWith("__activities__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(15));
+                  if (parsed.length > activities.length) activities = parsed;
+                } catch (_) {}
+              } else if (item.startsWith("__lessonSessions__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(19));
+                  if (parsed.length > lessonSessions.length) lessonSessions = parsed;
+                } catch (_) {}
+              } else if (item.startsWith("__quizAttempts__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(17));
+                  if (parsed.length > quizAttempts.length) quizAttempts = parsed;
+                } catch (_) {}
+              } else if (item.startsWith("__generatedCourses__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(21));
+                  if (parsed.length > generatedCourses.length) generatedCourses = parsed;
+                } catch (_) {}
+              } else if (item.startsWith("__completedLessons__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(21));
+                  if (Object.keys(parsed).length > Object.keys(completedLessons).length) completedLessons = parsed;
+                } catch (_) {}
+              } else if (item.startsWith("__courseProgress__:")) {
+                try {
+                  const parsed = JSON.parse(item.substring(19));
+                  if (Object.keys(parsed).length > Object.keys(courseProgress).length) courseProgress = parsed;
+                } catch (_) {}
+              } else {
+                if (!badges.includes(item)) badges.push(item);
+              }
+            } else {
+              if (!badges.includes(item)) badges.push(item);
+            }
+          });
+
+          if (Array.isArray(progressList)) {
+            progressList.forEach((item) => {
+              const cId = item.course_id;
+              const lId = item.lesson_id;
+
+              if (item.completed) {
+                completedLessons[lId] = true;
+                if (!courseProgress[cId]) {
+                  courseProgress[cId] = {
+                    viewedLessons: {},
+                    completedLessons: {},
+                    completedQuizzes: {},
+                    xp: 0,
+                    progress: 0,
+                    completed: false
+                  };
+                }
+                courseProgress[cId].completedLessons[lId] = true;
+              }
+            });
+
+            // Recompute progress for courses based on completions
+            Object.keys(courseProgress).forEach((cId) => {
+              const current = courseProgress[cId];
+              const completedCount = Object.keys(current.completedLessons || {}).length;
+              const viewedCount = Object.keys(current.viewedLessons || {}).length;
+              const quizzesCount = Object.keys(current.completedQuizzes || {}).length;
+              const achieved = viewedCount + quizzesCount + completedCount;
+              current.progress = Math.min(100, Math.round((achieved / 9) * 100));
+            });
+          }
+
+          return {
+            name: profile.name ?? state.name ?? "Learner",
+            email: profile.email ?? state.email ?? "",
+            xp: Math.max(profile.xp ?? 0, state.xp ?? 0),
+            streak: Math.max(profile.streak ?? 0, state.streak ?? 0),
+            longestStreak: Math.max(longestStreak, state.longestStreak ?? 0),
+            activeDays,
+            activities,
+            lessonSessions,
+            quizAttempts,
+            generatedCourses,
+            completedLessons,
+            courseProgress,
+            badges
+          };
+        });
+      },
+      updateProfileName: (name) => {
+        set(() => ({
+          name
+        }));
+      },
+      resetStore: () => {
+        set(() => ({
+          completedLessons: {},
+          xp: 0,
+          streak: 0,
+          longestStreak: 0,
+          activeDays: [],
+          generatedCourses: [],
+          activities: [],
+          courseProgress: {},
+          completedCourses: {},
+          lastOpenedCourseId: "",
+          lessonSessions: [],
+          activeLessonSession: null,
+          quizAttempts: [],
+          badges: []
         }));
       },
       addToast: (payload) => {
@@ -443,7 +579,7 @@ export const useLearningStore = create(
     }),
     {
       name: "visualmind-learning-store",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState) => {
         const state = persistedState && typeof persistedState === "object" ? persistedState : {};

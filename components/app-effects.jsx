@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AnimatedBackground, CustomCursor, PageTransition, ScrollProgress } from "@/components/animation-kit";
+import { AnimatedBackground, PageTransition, ScrollProgress } from "@/components/animation-kit";
+import TargetCursor from "./target-cursor";
 
 export function AppEffects({ children }) {
   const pathname = usePathname();
@@ -10,7 +11,12 @@ export function AppEffects({ children }) {
     <>
       <AnimatedBackground />
       <ScrollProgress />
-      <CustomCursor />
+      <TargetCursor
+        targetSelector="a, button, [data-cursor], .cursor-target"
+        spinDuration={2}
+        hideDefaultCursor={true}
+        parallaxOn={true}
+      />
       <PageTransition pathname={pathname}>{children}</PageTransition>
     </>
   );

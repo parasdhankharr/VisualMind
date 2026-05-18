@@ -172,10 +172,10 @@ export function CustomCursor() {
   const [hidden, setHidden] = useState(true);
   const x = useMotionValue(-100);
   const y = useMotionValue(-100);
-  const smoothX = useSpring(x, { stiffness: 260, damping: 28, mass: 0.35 });
-  const smoothY = useSpring(y, { stiffness: 260, damping: 28, mass: 0.35 });
-  const trailX = useSpring(x, { stiffness: 90, damping: 26, mass: 0.8 });
-  const trailY = useSpring(y, { stiffness: 90, damping: 26, mass: 0.8 });
+  const smoothX = useSpring(x, { stiffness: 450, damping: 28, mass: 0.2 });
+  const smoothY = useSpring(y, { stiffness: 450, damping: 28, mass: 0.2 });
+  const trailX = useSpring(x, { stiffness: 160, damping: 22, mass: 0.6 });
+  const trailY = useSpring(y, { stiffness: 160, damping: 22, mass: 0.6 });
 
   useEffect(() => {
     const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -205,15 +205,42 @@ export function CustomCursor() {
 
   return (
     <>
+      {/* Central Solid Target Dot */}
       <motion.div
-        className="pointer-events-none fixed left-0 top-0 z-[100] h-7 w-7 rounded-full border border-cyan-200/70 mix-blend-difference"
+        className="pointer-events-none fixed left-0 top-0 z-[101] h-1.5 w-1.5 rounded-full bg-cyan-400 mix-blend-screen"
         style={{ x: smoothX, y: smoothY, translateX: "-50%", translateY: "-50%" }}
-        animate={{ scale: active ? 2.45 : 1, opacity: hidden ? 0 : 1 }}
+        animate={{ scale: active ? 1.8 : 1, opacity: hidden ? 0 : 1 }}
       />
+      {/* Outer Rotating Dotted Reticle Ring */}
       <motion.div
-        className="pointer-events-none fixed left-0 top-0 z-[99] h-16 w-16 rounded-full bg-cyan-300/20 blur-xl"
+        className="pointer-events-none fixed left-0 top-0 z-[100] flex items-center justify-center mix-blend-screen"
         style={{ x: trailX, y: trailY, translateX: "-50%", translateY: "-50%" }}
-        animate={{ scale: active ? 1.45 : 1, opacity: hidden ? 0 : 1 }}
+        animate={{
+          scale: active ? 1.6 : 1,
+          rotate: active ? 90 : 0,
+          opacity: hidden ? 0 : 0.8
+        }}
+        transition={{
+          rotate: { duration: 0.45, ease: "easeOut" },
+          scale: { type: "spring", stiffness: 350, damping: 18 }
+        }}
+      >
+        <div className="relative h-9 w-9 flex items-center justify-center">
+          {/* Dotted lock-on reticle boundary */}
+          <div className="absolute inset-0 rounded-full border border-cyan-400/40 border-dashed" />
+          
+          {/* Reticle Crosshair Locks */}
+          <div className="absolute top-0 h-1.5 w-[1px] bg-cyan-400/90" />
+          <div className="absolute bottom-0 h-1.5 w-[1px] bg-cyan-400/90" />
+          <div className="absolute left-0 h-[1px] w-1.5 bg-cyan-400/90" />
+          <div className="absolute right-0 h-[1px] w-1.5 bg-cyan-400/90" />
+        </div>
+      </motion.div>
+      {/* Radial lock-on backlight glow */}
+      <motion.div
+        className="pointer-events-none fixed left-0 top-0 z-[99] h-16 w-16 rounded-full bg-cyan-400/10 blur-xl"
+        style={{ x: trailX, y: trailY, translateX: "-50%", translateY: "-50%" }}
+        animate={{ scale: active ? 1.35 : 1, opacity: hidden ? 0 : 1 }}
       />
     </>
   );
@@ -249,20 +276,14 @@ export function AnimatedBackground() {
 }
 
 export function PageTransition({ children, pathname }) {
-  const y = useTransform(useMotionValue(1), [0, 1], [10, 0]);
-
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -10, filter: "blur(8px)" }}
-        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-        style={{ y }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
   );
 }

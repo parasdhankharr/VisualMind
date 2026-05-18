@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedButton } from "@/components/animation-kit";
 import { createGeneratedCourseFromTransform } from "@/lib/learning";
 import { useLearningStore } from "@/store/use-learning-store";
+import GridScan from "@/components/GridScan";
 
 const sampleText =
   "Photosynthesis is the process by which green plants use sunlight to synthesize food from carbon dioxide and water. Chlorophyll captures light energy, which helps convert carbon dioxide and water into glucose. Oxygen is released as a byproduct. This process supports most life on Earth because it creates food energy and maintains oxygen levels in the atmosphere.";
@@ -165,9 +166,8 @@ function ViewSwitcher({ view, setView }) {
           key={id}
           type="button"
           onClick={() => setView(id)}
-          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-            view === id ? "bg-white text-slate-950" : "text-slate-300 hover:bg-white/10 hover:text-white"
-          }`}
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${view === id ? "bg-white text-slate-950" : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
         >
           {label}
         </button>
@@ -258,11 +258,11 @@ function deriveWorkspaceData(text, result) {
   const sourceConcepts = (result.concepts || []).length
     ? result.concepts
     : takeaways.map((item, index) => ({
-        id: `concept-${index}`,
-        title: compactLabel(item.text, 4),
-        relation: "connects",
-        explanation: item.text
-      }));
+      id: `concept-${index}`,
+      title: compactLabel(item.text, 4),
+      relation: "connects",
+      explanation: item.text
+    }));
 
   const concepts = sourceConcepts.slice(0, 4).map((concept, index) => ({
     id: concept.id || `concept-${index}`,
@@ -337,9 +337,8 @@ function MindMapNode({ node, isActive, onClick, className = "" }) {
       onClick={onClick}
       whileHover={{ scale: 1.02, y: -3 }}
       whileTap={{ scale: 0.99 }}
-      className={`group relative w-full rounded-[1.45rem] border p-4 text-left backdrop-blur-xl transition ${
-        isActive ? "border-cyan-200/60 bg-white/14" : "border-white/10 bg-white/8 hover:border-white/20"
-      } ${className}`}
+      className={`group relative w-full rounded-[1.45rem] border p-4 text-left backdrop-blur-xl transition ${isActive ? "border-cyan-200/60 bg-white/14" : "border-white/10 bg-white/8 hover:border-white/20"
+        } ${className}`}
     >
       <div className={`h-1.5 w-14 rounded-full bg-gradient-to-r ${node.color}`} />
       <p className="mt-4 line-clamp-2 text-lg font-black leading-tight text-white">{node.title}</p>
@@ -458,9 +457,8 @@ function ConceptFlowView({ data, activeNode, setActiveNode }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: index * 0.08 }}
           whileHover={{ y: -4, scale: 1.01 }}
-          className={`rounded-[1.75rem] border p-5 text-left transition ${
-            activeNode === concept.id ? "border-cyan-200/50 bg-white/10" : "border-white/10 bg-white/5"
-          }`}
+          className={`rounded-[1.75rem] border p-5 text-left transition ${activeNode === concept.id ? "border-cyan-200/50 bg-white/10" : "border-white/10 bg-white/5"
+            }`}
         >
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Concept {index + 1}</p>
           <div className="mt-4 flex items-center justify-between gap-3">
@@ -506,9 +504,8 @@ function StudyNotesView({ data, activeNode, setActiveNode }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.12 + index * 0.06 }}
             whileHover={{ y: -3 }}
-            className={`rounded-[1.45rem] border p-4 text-left transition ${
-              activeNode === item.id ? "border-cyan-200/50 bg-white/10" : "border-white/10 bg-white/[0.04]"
-            }`}
+            className={`rounded-[1.45rem] border p-4 text-left transition ${activeNode === item.id ? "border-cyan-200/50 bg-white/10" : "border-white/10 bg-white/[0.04]"
+              }`}
           >
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Takeaway {index + 1}</p>
             <p className="mt-3 text-sm leading-7 text-slate-200">{item.text}</p>
@@ -548,9 +545,8 @@ function DetailPanel({ data, activeNode, setActiveNode }) {
               key={item.id}
               type="button"
               onClick={() => setActiveNode(item.id)}
-              className={`w-full rounded-[1.25rem] border p-4 text-left text-sm leading-7 transition ${
-                activeNode === item.id ? "border-cyan-200/50 bg-white/10 text-white" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
-              }`}
+              className={`w-full rounded-[1.25rem] border p-4 text-left text-sm leading-7 transition ${activeNode === item.id ? "border-cyan-200/50 bg-white/10 text-white" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                }`}
             >
               <span className="mr-2 text-cyan-200">{index + 1}.</span>
               {item.text}
@@ -567,9 +563,8 @@ function DetailPanel({ data, activeNode, setActiveNode }) {
               key={concept.id}
               type="button"
               onClick={() => setActiveNode(concept.id)}
-              className={`w-full rounded-[1.35rem] border p-4 text-left transition ${
-                activeNode === concept.id ? "border-cyan-200/50 bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
-              }`}
+              className={`w-full rounded-[1.35rem] border p-4 text-left transition ${activeNode === concept.id ? "border-cyan-200/50 bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                }`}
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-black text-white">{concept.fullTitle}</p>
@@ -589,15 +584,28 @@ function DetailPanel({ data, activeNode, setActiveNode }) {
 
 function LoadingWorkspace() {
   return (
-    <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-white/10 bg-slate-950/70 p-6">
-      <div className="w-full max-w-3xl space-y-6">
-        <div className="h-6 w-48 animate-pulse rounded-full bg-white/10" />
-        <div className="grid gap-4 md:grid-cols-2">
-          {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="h-40 animate-pulse rounded-[1.5rem] bg-white/10" />
-          ))}
-        </div>
-        <div className="h-24 animate-pulse rounded-[1.75rem] bg-white/10" />
+    <div className="relative min-h-[31rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[#020617]">
+      <div className="absolute inset-0 z-0">
+        <GridScan
+          sensitivity={0.55}
+          lineThickness={1.5}
+          linesColor="#0f172a"
+          gridScale={0.12}
+          scanColor="#22d3ee"
+          scanOpacity={0.8}
+          enablePost={true}
+          bloomIntensity={1.5}
+          chromaticAberration={0.003}
+          noiseIntensity={0.015}
+          scanDirection="pingpong"
+        />
+      </div>
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/20 backdrop-blur-[2px]">
+        <p className="text-sm font-bold uppercase tracking-[0.2em] text-cyan-300">Processing Content</p>
+        <h3 className="mt-3 text-3xl font-black text-white">Synthesizing Concepts</h3>
+        <p className="mt-3 max-w-sm text-center text-sm leading-6 text-slate-300">
+          The Visual Learning Engine is analyzing your text and building a structured concept map...
+        </p>
       </div>
     </div>
   );
@@ -673,6 +681,8 @@ export function AiLab() {
     try {
       setLoading(true);
       setError("");
+      
+      const startTime = Date.now();
 
       const response = await fetch("/api/ai/transform", {
         method: "POST",
@@ -683,18 +693,22 @@ export function AiLab() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || "Could not transform this content.");
-        return;
+        throw new Error(data.message || "Could not transform this content.");
       }
 
       const generatedCourse = createGeneratedCourseFromTransform({ text, result: data });
       recordGeneratedCourse(generatedCourse);
 
-      await fetch("/api/courses", {
+      fetch("/api/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(generatedCourse)
       }).catch(() => null);
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 5000) {
+        await new Promise(resolve => setTimeout(resolve, 5000 - elapsed));
+      }
 
       setLoggedNodes({});
       setResult(data);

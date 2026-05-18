@@ -1,34 +1,58 @@
-import { connectDB } from "@/lib/db";
-import User from "@/models/User";
+import { NextResponse } from "next/server";
+import { leaderboard as fallbackLeaderboard } from "@/data/courses";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    await connectDB();
+    const supabase = await createClient();
 
-    // Fetch top 10 users by XP, including name, xp, streak
-    const leaderboard = await User.find({})
-      .sort({ xp: -1 })
-      .limit(10)
-      .select("name xp streak")
-      .lean();
+    // Query profiles directly from database sorted by XP descending
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("id, name, xp, streak, email")
+      .order("xp", { ascending: false });
 
-    // Calculate focus as in the component: 84 + Math.floor(streak / 2)
-    const leaderboardWithFocus = leaderboard.map(user => ({
-      name: user.name,
-      xp: user.xp,
-      streak: user.streak,
-      focus: 84 + Math.floor(user.streak / 2)
+    if (error) throw error;
+
+    const dbUsers = Array.isArray(profiles) ? profiles.map((p) => ({
+      id: p.id,
+      name: p.name || "Learner",
+      xp: p.xp ?? 0,
+      streak: p.streak ?? 0,
+      email: p.email || "",
+      weeklyXp: 180, // Simulated weekly progression
+      movement: 0,
+      isReal: true
+    })) : [];
+
+    const seedUsers = fallbackLeaderboard.map((item, index) => ({
+      id: `seed-${index}`,
+      name: item.name,
+      xp: item.xp,
+      streak: item.streak,
+      email: `${item.name.toLowerCase()}@visualmind.edu`,
+      weeklyXp: item.weeklyXp || 120,
+      movement: item.movement || 0,
+      isReal: false
     }));
 
-    return new Response(JSON.stringify(leaderboardWithFocus), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
+    // Merge databases and seed, avoiding duplicates
+    const combined = [...dbUsers];
+    seedUsers.forEach((seed) => {
+      const isNameDup = combined.some((u) => u.name.toLowerCase() === seed.name.toLowerCase());
+      const isEmailDup = combined.some((u) => u.email.toLowerCase() === seed.email.toLowerCase());
+      if (!isNameDup && !isEmailDup) {
+        combined.push(seed);
+      }
     });
+
+    // Sort by total XP descending
+    combined.sort((a, b) => b.xp - a.xp);
+
+    return NextResponse.json(combined);
   } catch (error) {
-    console.error("Error fetching leaderboard:", error);
-    return new Response(JSON.stringify({ error: "Failed to fetch leaderboard" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Error in GET /api/leaderboard:", error);
+    // Safe robust fallback
+    return NextResponse.json(fallbackLeaderboard);
   }
 }
